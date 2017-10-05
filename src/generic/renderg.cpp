@@ -116,9 +116,9 @@ public:
     virtual void DrawCollapseButton(wxWindow *win,
         wxDC& dc,
         const wxRect& rect,
-        int flags = 0);
+        int flags = 0) wxOVERRIDE;
 
-    virtual wxSize GetCollapseButtonSize(wxWindow *win, wxDC& dc);
+    virtual wxSize GetCollapseButtonSize(wxWindow *win, wxDC& dc) wxOVERRIDE;
 
     virtual void DrawItemSelectionRect(wxWindow *win,
                                        wxDC& dc,
@@ -712,9 +712,9 @@ wxRendererGeneric::DrawCheckBox(wxWindow *WXUNUSED(win),
     }
 }
 
-wxSize wxRendererGeneric::GetCheckBoxSize(wxWindow *WXUNUSED(win))
+wxSize wxRendererGeneric::GetCheckBoxSize(wxWindow *win)
 {
-    return wxSize(16, 16);
+    return win->FromDIP(wxSize(16, 16));
 }
 
 void
@@ -770,7 +770,7 @@ wxSize wxRendererGeneric::GetCollapseButtonSize(wxWindow *WXUNUSED(win), wxDC& W
 }
 
 void
-wxRendererGeneric::DrawItemSelectionRect(wxWindow * win,
+wxRendererGeneric::DrawItemSelectionRect(wxWindow * WXUNUSED(win),
                                          wxDC& dc,
                                          const wxRect& rect,
                                          int flags)
@@ -793,11 +793,7 @@ wxRendererGeneric::DrawItemSelectionRect(wxWindow * win,
     }
 
     dc.SetBrush(brush);
-    bool drawFocusRect = (flags & wxCONTROL_CURRENT) && (flags & wxCONTROL_FOCUSED)
-#if defined( __WXMAC__ ) && !defined(__WXUNIVERSAL__) && wxOSX_USE_CARBON
-                && IsControlActive( (ControlRef)win->GetHandle() )
-#endif
-        ;
+    bool drawFocusRect = (flags & wxCONTROL_CURRENT) && (flags & wxCONTROL_FOCUSED);
 
     if ( drawFocusRect && !(flags & wxCONTROL_CELL) )
         dc.SetPen( *wxBLACK_PEN );
@@ -813,9 +809,6 @@ wxRendererGeneric::DrawItemSelectionRect(wxWindow * win,
 
         DrawSelectedCellFocusRect(dc, focusRect);
     }
-
-    // it's unused everywhere except in wxOSX/Carbon
-    wxUnusedVar(win);
 }
 
 void
@@ -945,14 +938,7 @@ wxRendererGeneric::DrawItemText(wxWindow* WXUNUSED(win),
     wxColour textColour;
     if ( flags & wxCONTROL_SELECTED )
     {
-        if ( flags & wxCONTROL_FOCUSED )
-        {
-            textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT);
-        }
-        else // !focused
-        {
-            textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOXTEXT);
-        }
+        textColour = wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT);
     }
     else if ( flags & wxCONTROL_DISABLED )
     {

@@ -36,6 +36,10 @@
 
 #include <AudioToolbox/AudioServices.h>
 
+#if wxUSE_GUI
+    #include "wx/private/launchbrowser.h"
+#endif
+
 #include "wx/osx/private.h"
 #include "wx/osx/private/timer.h"
 
@@ -58,13 +62,6 @@ bool wxColourDisplay()
 
 
 #if wxOSX_USE_COCOA_OR_CARBON
-
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= 1070) && (MAC_OS_X_VERSION_MIN_REQUIRED < 1060)
-// bring back declaration so that we can support deployment targets < 10_6
-CG_EXTERN size_t CGDisplayBitsPerPixel(CGDirectDisplayID display)
-CG_AVAILABLE_BUT_DEPRECATED(__MAC_10_0, __MAC_10_6,
-                            __IPHONE_NA, __IPHONE_NA);
-#endif
 
 // Returns depth of screen
 int wxDisplayDepth()
@@ -130,11 +127,10 @@ bool wxLaunchDefaultApplication(const wxString& document, int flags)
 // Launch default browser
 // ----------------------------------------------------------------------------
 
-bool wxDoLaunchDefaultBrowser(const wxString& url, int flags)
+bool wxDoLaunchDefaultBrowser(const wxLaunchBrowserParams& params)
 {
-    wxUnusedVar(flags);
     wxCFRef< CFURLRef > curl( CFURLCreateWithString( kCFAllocatorDefault,
-                              wxCFStringRef( url ), NULL ) );
+                              wxCFStringRef( params.url ), NULL ) );
     OSStatus err = LSOpenCFURLRef( curl , NULL );
 
     if (err == noErr)
@@ -154,22 +150,32 @@ bool wxDoLaunchDefaultBrowser(const wxString& url, int flags)
 
 void wxDisplaySizeMM(int *width, int *height)
 {
+#if wxOSX_USE_IPHONE
     wxDisplaySize(width, height);
     // on mac 72 is fixed (at least now;-)
     double cvPt2Mm = 25.4 / 72;
-
+    
     if (width != NULL)
         *width = int( *width * cvPt2Mm );
-
+    
     if (height != NULL)
         *height = int( *height * cvPt2Mm );
+#else
+    CGSize size = CGDisplayScreenSize(CGMainDisplayID());
+    if ( width )
+        *width = (int)size.width ;
+    if ( height )
+        *height = (int)size.height;
+#endif
 }
 
 
-wxPortId wxGUIAppTraits::GetToolkitVersion(int *verMaj, int *verMin) const
+wxPortId wxGUIAppTraits::GetToolkitVersion(int *verMaj,
+                                           int *verMin,
+                                           int *verMicro) const
 {
     // We suppose that toolkit version is the same as OS version under Mac
-    wxGetOsVersion(verMaj, verMin);
+    wxGetOsVersion(verMaj, verMin, verMicro);
 
     return wxPORT_OSX;
 }
@@ -183,26 +189,7 @@ wxWindow* wxFindWindowAtPoint(wxWindow* win, const wxPoint& pt);
 
 wxWindow* wxFindWindowAtPoint(const wxPoint& pt)
 {
-#if wxOSX_USE_CARBON
-
-    Point screenPoint = { pt.y , pt.x };
-    WindowRef windowRef;
-
-    if ( FindWindow( screenPoint , &windowRef ) )
-    {
-        wxNonOwnedWindow *nonOwned = wxNonOwnedWindow::GetFromWXWindow( windowRef );
-
-        if ( nonOwned )
-            return wxFindWindowAtPoint( nonOwned , pt );
-    }
-
-    return NULL;
-
-#else
-
     return wxGenericFindWindowAtPoint( pt );
-
-#endif
 }
 
 /*

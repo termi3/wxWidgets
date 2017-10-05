@@ -32,7 +32,12 @@
 #include "wx/numdlg.h"
 #include "wx/spinctrl.h"
 #include "wx/imaglist.h"
+#include "wx/itemattr.h"
 #include "wx/notebook.h"
+
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+    #include "wx/headerctrl.h"
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
 
 #include "mymodels.h"
 
@@ -74,7 +79,14 @@ private:
     // event handlers
     void OnStyleChange(wxCommandEvent& event);
     void OnSetBackgroundColour(wxCommandEvent& event);
+    void OnCustomHeaderAttr(wxCommandEvent& event);
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+    void OnCustomHeaderHeight(wxCommandEvent& event);
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
     void OnSetForegroundColour(wxCommandEvent& event);
+    void OnIncIndent(wxCommandEvent& event);
+    void OnDecIndent(wxCommandEvent& event);
+
     void OnQuit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
 
@@ -170,10 +182,12 @@ private:
 class MyCustomRenderer: public wxDataViewCustomRenderer
 {
 public:
-    MyCustomRenderer()
-        : wxDataViewCustomRenderer("string",
-                                   wxDATAVIEW_CELL_ACTIVATABLE,
-                                   wxALIGN_CENTER)
+    // This renderer can be either activatable or editable, for demonstration
+    // purposes. In real programs, you should select whether the user should be
+    // able to activate or edit the cell and it doesn't make sense to switch
+    // between the two -- but this is just an example, so it doesn't stop us.
+    explicit MyCustomRenderer(wxDataViewCellMode mode)
+        : wxDataViewCustomRenderer("string", mode, wxALIGN_CENTER)
        { }
 
     virtual bool Render( wxRect rect, wxDC *dc, int state ) wxOVERRIDE
@@ -220,6 +234,41 @@ public:
 
     virtual bool GetValue( wxVariant &WXUNUSED(value) ) const wxOVERRIDE { return true; }
 
+#if wxUSE_ACCESSIBILITY
+    virtual wxString GetAccessibleDescription() const wxOVERRIDE
+    {
+        return m_value;
+    }
+#endif // wxUSE_ACCESSIBILITY
+
+    virtual bool HasEditorCtrl() const wxOVERRIDE { return true; }
+
+    virtual wxWindow*
+    CreateEditorCtrl(wxWindow* parent,
+                     wxRect labelRect,
+                     const wxVariant& value) wxOVERRIDE
+    {
+        wxTextCtrl* text = new wxTextCtrl(parent, wxID_ANY, value,
+                                          labelRect.GetPosition(),
+                                          labelRect.GetSize(),
+                                          wxTE_PROCESS_ENTER);
+        text->SetInsertionPointEnd();
+
+        return text;
+    }
+
+    virtual bool
+    GetValueFromEditorCtrl(wxWindow* ctrl, wxVariant& value) wxOVERRIDE
+    {
+        wxTextCtrl* text = wxDynamicCast(ctrl, wxTextCtrl);
+        if ( !text )
+            return false;
+
+        value = text->GetValue();
+
+        return true;
+    }
+
 private:
     wxString m_value;
 };
@@ -257,7 +306,13 @@ enum
     ID_CLEARLOG = wxID_HIGHEST+1,
     ID_BACKGROUND_COLOUR,
     ID_FOREGROUND_COLOUR,
+    ID_CUSTOM_HEADER_ATTR,
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+    ID_CUSTOM_HEADER_HEIGHT,
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
     ID_STYLE_MENU,
+    ID_INC_INDENT,
+    ID_DEC_INDENT,
 
     // file menu
     //ID_SINGLE,        wxDV_SINGLE==0 so it's always present
@@ -309,6 +364,12 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
 
     EVT_MENU( ID_FOREGROUND_COLOUR, MyFrame::OnSetForegroundColour )
     EVT_MENU( ID_BACKGROUND_COLOUR, MyFrame::OnSetBackgroundColour )
+    EVT_MENU( ID_CUSTOM_HEADER_ATTR, MyFrame::OnCustomHeaderAttr )
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+    EVT_MENU( ID_CUSTOM_HEADER_HEIGHT, MyFrame::OnCustomHeaderHeight )
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
+    EVT_MENU( ID_INC_INDENT, MyFrame::OnIncIndent )
+    EVT_MENU( ID_DEC_INDENT, MyFrame::OnDecIndent )
 
     EVT_NOTEBOOK_PAGE_CHANGED( wxID_ANY, MyFrame::OnPageChanged )
 
@@ -394,7 +455,13 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, int x, int y, int w, int
     file_menu->Append(ID_CLEARLOG, "&Clear log\tCtrl-L");
     file_menu->Append(ID_FOREGROUND_COLOUR, "Set &foreground colour...\tCtrl-S");
     file_menu->Append(ID_BACKGROUND_COLOUR, "Set &background colour...\tCtrl-B");
+    file_menu->AppendCheckItem(ID_CUSTOM_HEADER_ATTR, "C&ustom header attributes");
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+    file_menu->AppendCheckItem(ID_CUSTOM_HEADER_HEIGHT, "Custom header &height");
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
     file_menu->Append(ID_STYLE_MENU, "&Style", style_menu);
+    file_menu->Append(ID_INC_INDENT, "&Increase indent\tCtrl-I");
+    file_menu->Append(ID_DEC_INDENT, "&Decrease indent\tShift-Ctrl-I");
     file_menu->AppendSeparator();
     file_menu->Append(ID_EXIT, "E&xit");
 
@@ -605,7 +672,7 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
 
             // column 5 of the view control:
 
-            MyCustomRenderer *cr = new MyCustomRenderer;
+            MyCustomRenderer *cr = new MyCustomRenderer(wxDATAVIEW_CELL_ACTIVATABLE);
             wxDataViewColumn *column5 =
                 new wxDataViewColumn( "custom", cr, 5, -1, wxALIGN_LEFT,
                                       wxDATAVIEW_COL_RESIZABLE );
@@ -642,9 +709,14 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
 
             m_ctrl[1]->AppendDateColumn("date",
                                         MyListModel::Col_Date);
+
+            wxDataViewTextRenderer* const markupRenderer = new wxDataViewTextRenderer();
+#if wxUSE_MARKUP
+            markupRenderer->EnableMarkup();
+#endif // wxUSE_MARKUP
             m_attributes =
                 new wxDataViewColumn("attributes",
-                                     new wxDataViewTextRenderer,
+                                     markupRenderer,
                                      MyListModel::Col_TextWithAttr,
                                      wxCOL_WIDTH_AUTOSIZE,
                                      wxALIGN_RIGHT,
@@ -653,7 +725,7 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
 
             m_ctrl[1]->AppendColumn(
                 new wxDataViewColumn("custom renderer",
-                                     new MyCustomRenderer,
+                                     new MyCustomRenderer(wxDATAVIEW_CELL_EDITABLE),
                                      MyListModel::Col_Custom)
             );
         }
@@ -700,14 +772,14 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
             ilist->Add( wxIcon(wx_small_xpm) );
             tc->AssignImageList( ilist );
 
-            wxDataViewItem parent =
+            const wxDataViewItem root =
                 tc->AppendContainer( wxDataViewItem(0), "The Root", 0 );
-            tc->AppendItem( parent, "Child 1", 0 );
-            tc->AppendItem( parent, "Child 2", 0 );
-            tc->AppendItem( parent, "Child 3, very long, long, long, long", 0 );
+            tc->AppendItem( root, "Child 1", 0 );
+            tc->AppendItem( root, "Child 2", 0 );
+            tc->AppendItem( root, "Child 3, very long, long, long, long", 0 );
 
             wxDataViewItem cont =
-                tc->AppendContainer( parent, "Container child", 0 );
+                tc->AppendContainer( root, "Container child", 0 );
             tc->AppendItem( cont, "Child 4", 0 );
             tc->AppendItem( cont, "Child 5", 0 );
 
@@ -747,6 +819,55 @@ void MyFrame::OnSetBackgroundColour(wxCommandEvent& WXUNUSED(event))
         dvc->SetBackgroundColour(col);
         Refresh();
     }
+}
+
+void MyFrame::OnCustomHeaderAttr(wxCommandEvent& event)
+{
+    wxItemAttr attr;
+    if ( event.IsChecked() )
+    {
+        attr.SetTextColour(*wxRED);
+        attr.SetFont(wxFontInfo(20).Bold());
+    }
+    //else: leave it as default to disable custom header attributes
+
+    wxDataViewCtrl * const dvc = m_ctrl[m_notebook->GetSelection()];
+    if ( !dvc->SetHeaderAttr(attr) )
+        wxLogMessage("Sorry, header attributes not supported on this platform");
+}
+
+#ifdef wxHAS_GENERIC_DATAVIEWCTRL
+void MyFrame::OnCustomHeaderHeight(wxCommandEvent& event)
+{
+    wxDataViewCtrl * const dvc = m_ctrl[m_notebook->GetSelection()];
+    wxHeaderCtrl* const header = dvc->GenericGetHeader();
+    if ( !header )
+    {
+        wxLogMessage("No header");
+        return;
+    }
+
+    // Use a big height to show that this works.
+    wxSize size = event.IsChecked() ? FromDIP(wxSize(0, 80)) : wxDefaultSize;
+    header->SetMinSize(size);
+    header->Refresh();
+
+    dvc->Layout();
+}
+#endif // wxHAS_GENERIC_DATAVIEWCTRL
+
+void MyFrame::OnIncIndent(wxCommandEvent& WXUNUSED(event))
+{
+    wxDataViewCtrl * const dvc = m_ctrl[m_notebook->GetSelection()];
+    dvc->SetIndent(dvc->GetIndent() + 5);
+    wxLogMessage("Indent is now %d", dvc->GetIndent());
+}
+
+void MyFrame::OnDecIndent(wxCommandEvent& WXUNUSED(event))
+{
+    wxDataViewCtrl * const dvc = m_ctrl[m_notebook->GetSelection()];
+    dvc->SetIndent(wxMax(dvc->GetIndent() - 5, 0));
+    wxLogMessage("Indent is now %d", dvc->GetIndent());
 }
 
 void MyFrame::OnPageChanged( wxBookCtrlEvent& WXUNUSED(event) )
@@ -834,7 +955,7 @@ void MyFrame::OnAbout( wxCommandEvent& WXUNUSED(event) )
     info.AddDeveloper("Robert Roebling");
     info.AddDeveloper("Francesco Montorsi");
 
-    wxAboutBox(info);
+    wxAboutBox(info, this);
 }
 
 

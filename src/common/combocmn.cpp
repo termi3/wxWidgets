@@ -169,7 +169,7 @@ wxCONSTRUCTOR_5( wxComboBox, wxWindow*, Parent, wxWindowID, Id, \
 #define TRANSIENT_POPUPWIN_IS_PERFECT 1 // wxPopupTransientWindow works, its child can have focus, and common
                                         // native controls work on it like normal.
 #define POPUPWIN_IS_PERFECT           1 // Same, but for non-transient popup window.
-#define TEXTCTRL_TEXT_CENTERED        1 // 1 if text in textctrl is vertically centered
+#define TEXTCTRL_TEXT_CENTERED        0 // 1 if text in textctrl is vertically centered
 #define FOCUS_RING                    0 // No focus ring on wxGTK
 
 #elif defined(__WXMAC__)
@@ -182,7 +182,7 @@ wxCONSTRUCTOR_5( wxComboBox, wxWindow*, Parent, wxWindowID, Id, \
 #define TRANSIENT_POPUPWIN_IS_PERFECT 1 // wxPopupTransientWindow works, its child can have focus, and common
                                         // native controls work on it like normal.
 #define POPUPWIN_IS_PERFECT           1 // Same, but for non-transient popup window.
-#define TEXTCTRL_TEXT_CENTERED        1 // 1 if text in textctrl is vertically centered
+#define TEXTCTRL_TEXT_CENTERED        0 // 1 if text in textctrl is vertically centered
 #define FOCUS_RING                    3 // Reserve room for the textctrl's focus ring to display
 
 #undef DEFAULT_DROPBUTTON_WIDTH
@@ -1100,9 +1100,12 @@ wxComboCtrlBase::CreateTextCtrl(int style)
         m_text->Connect(id, wxEVT_TEXT,
                         wxCommandEventHandler(wxComboCtrlBase::OnTextCtrlEvent),
                         NULL, this);
-        m_text->Connect(id, wxEVT_TEXT_ENTER,
-                        wxCommandEventHandler(wxComboCtrlBase::OnTextCtrlEvent),
-                        NULL, this);
+        if ( style & wxTE_PROCESS_ENTER )
+        {
+            m_text->Connect(id, wxEVT_TEXT_ENTER,
+                            wxCommandEventHandler(wxComboCtrlBase::OnTextCtrlEvent),
+                            NULL, this);
+        }
 
         m_text->SetHint(m_hintText);
     }
@@ -1279,9 +1282,9 @@ void wxComboCtrlBase::CalculateAreas( int btnWidth )
     m_btnArea.width = butAreaWid;
     m_btnArea.height = sz.y - ((btnBorder+FOCUS_RING)*2);
 
-    m_tcArea.x = ( m_btnSide==wxRIGHT ? 0 : butAreaWid ) + customBorder + FOCUS_RING;
+    m_tcArea.x = ( m_btnSide==wxRIGHT ? 0 : butAreaWid ) + customBorder;
     m_tcArea.y = customBorder + FOCUS_RING;
-    m_tcArea.width = sz.x - butAreaWid - (customBorder*2) - (FOCUS_RING*2);
+    m_tcArea.width = sz.x - butAreaWid - (customBorder*2) - FOCUS_RING;
     m_tcArea.height = sz.y - ((customBorder+FOCUS_RING)*2);
 
 /*
@@ -2303,7 +2306,7 @@ void wxComboCtrlBase::ShowPopup()
     //     by, for instance, adding check to window.cpp:wxWindowMSW::MSWProcessMessage
     //     that if transient popup is open, then tab traversal is to be ignored.
     //     However, I think this code would still be needed for cases where
-    //     transient popup doesn't work yet (wxWinCE?).
+    //     transient popup doesn't work yet.
     wxWindow* mainCtrl = GetMainWindowOfCompositeControl();
     wxWindow* parent = mainCtrl->GetParent();
     int parentFlags = parent->GetWindowStyle();

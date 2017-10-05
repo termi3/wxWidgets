@@ -57,7 +57,7 @@
 //      On a 300 dots-per-inch (dpi) printer, that may be rounded up to 3 dots
 //      (0.25 mm); on a 600 dpi printer, it can be rounded to 5 dots.
 //
-// See also http://trac.wxwidgets.org/ticket/10942.
+// See also https://trac.wxwidgets.org/ticket/10942.
 #define TYPICAL_SCREEN_DPI  96.0
 
 //--------------------------------------------------------------------------------
@@ -320,22 +320,22 @@ void wxHtmlPrintout::OnPreparePrinting()
                          (double)ppiPrinterY / (double)ppiScreenY);
     m_RendererHdr->SetSize((int) (ppmm_h * (mm_w - m_MarginLeft - m_MarginRight)),
                           (int) (ppmm_v * (mm_h - m_MarginTop - m_MarginBottom)));
-    if (m_Headers[0] != wxEmptyString)
+    if (!m_Headers[0].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Headers[0], 1));
         m_HeaderHeight = m_RendererHdr->GetTotalHeight();
     }
-    else if (m_Headers[1] != wxEmptyString)
+    else if (!m_Headers[1].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Headers[1], 1));
         m_HeaderHeight = m_RendererHdr->GetTotalHeight();
     }
-    if (m_Footers[0] != wxEmptyString)
+    if (!m_Footers[0].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Footers[0], 1));
         m_FooterHeight = m_RendererHdr->GetTotalHeight();
     }
-    else if (m_Footers[1] != wxEmptyString)
+    else if (!m_Footers[1].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Footers[1], 1));
         m_FooterHeight = m_RendererHdr->GetTotalHeight();
@@ -543,12 +543,12 @@ void wxHtmlPrintout::RenderPage(wxDC *dc, int page)
     m_RendererHdr->SetDC(dc,
                          (double)ppiPrinterY / TYPICAL_SCREEN_DPI,
                          (double)ppiPrinterY / (double)ppiScreenY);
-    if (m_Headers[page % 2] != wxEmptyString)
+    if (!m_Headers[page % 2].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Headers[page % 2], page));
         m_RendererHdr->Render((int) (ppmm_h * m_MarginLeft), (int) (ppmm_v * m_MarginTop), m_PageBreaks);
     }
-    if (m_Footers[page % 2] != wxEmptyString)
+    if (!m_Footers[page % 2].empty())
     {
         m_RendererHdr->SetHtmlText(TranslateHeader(m_Footers[page % 2], page));
         m_RendererHdr->Render((int) (ppmm_h * m_MarginLeft), (int) (pageHeight - ppmm_v * m_MarginBottom - m_FooterHeight), m_PageBreaks);
@@ -593,8 +593,13 @@ void wxHtmlPrintout::SetMargins(float top, float bottom, float left, float right
     m_MarginSpace = spaces;
 }
 
-
-
+void wxHtmlPrintout::SetMargins(const wxPageSetupDialogData& pageSetupData)
+{
+    SetMargins(pageSetupData.GetMarginTopLeft().y,
+               pageSetupData.GetMarginBottomRight().y,
+               pageSetupData.GetMarginTopLeft().x,
+               pageSetupData.GetMarginBottomRight().x);
+}
 
 void wxHtmlPrintout::SetFonts(const wxString& normal_face, const wxString& fixed_face,
                               const int *sizes)
@@ -818,10 +823,7 @@ wxHtmlPrintout *wxHtmlEasyPrinting::CreatePrintout()
     p->SetFooter(m_Footers[0], wxPAGE_EVEN);
     p->SetFooter(m_Footers[1], wxPAGE_ODD);
 
-    p->SetMargins(m_PageSetupData->GetMarginTopLeft().y,
-                    m_PageSetupData->GetMarginBottomRight().y,
-                    m_PageSetupData->GetMarginTopLeft().x,
-                    m_PageSetupData->GetMarginBottomRight().x);
+    p->SetMargins(*m_PageSetupData);
 
     return p;
 }

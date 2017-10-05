@@ -32,6 +32,7 @@
 
 #include "wx/osx/private.h"
 #include "wx/scopedptr.h"
+#include "wx/private/menuradio.h" // for wxMenuRadioItemsData
 
 // other standard headers
 // ----------------------
@@ -61,6 +62,7 @@ void wxMenu::Init()
     m_doBreak = false;
     m_allowRearrange = true;
     m_noEventsMode = false;
+    m_radioData = NULL;
 
     m_peer = wxMenuImpl::Create( this, wxStripMenuCodes(m_title) );
 
@@ -75,18 +77,8 @@ void wxMenu::Init()
 
 wxMenu::~wxMenu()
 {
-#if wxOSX_USE_CARBON
-    // when destroying the empty menu bar from the static scoped ptr
-    // the peer destructor removes an association from an already deleted
-    // hashmap leading to crashes. The guard avoids this, accepting some leaks...
-    static bool finalmenubar = false;
-    
-    if ( this == gs_emptyMenuBar.get() )
-        finalmenubar = true;
-    
-    if ( !finalmenubar )
-#endif
-        delete m_peer;
+    delete m_radioData;
+    delete m_peer;
 }
 
 WXHMENU wxMenu::GetHMenu() const
@@ -111,6 +103,11 @@ void wxMenu::SetNoEventsMode( bool noEvents )
     m_noEventsMode = noEvents;
 }
 
+bool wxMenu::OSXGetRadioGroupRange(int pos, int *start, int *end) const
+{
+    return m_radioData && m_radioData->GetGroupRange(pos, start, end);
+}
+
 // function appends a new item or submenu to the menu
 // append a new item or submenu to the menu
 bool wxMenu::DoInsertOrAppend(wxMenuItem *item, size_t pos)
@@ -118,128 +115,44 @@ bool wxMenu::DoInsertOrAppend(wxMenuItem *item, size_t pos)
     wxASSERT_MSG( item != NULL, wxT("can't append NULL item to the menu") );
     GetPeer()->InsertOrAppend( item, pos );
 
+    wxMenu *pSubMenu = item->GetSubMenu() ;
+    if ( pSubMenu != NULL )
+    {
+        wxASSERT_MSG( pSubMenu->GetHMenu() != NULL , wxT("invalid submenu added"));
+        pSubMenu->m_menuParent = this ;
+
+        pSubMenu->DoRearrange();
+    }
+    else if ( item->GetId() == idMenuTitle )
+    {
+        item->GetMenu()->Enable( idMenuTitle, false );
+    }
+
+    if ( pos == (size_t)-1 )
+    {
+        pos = GetMenuItemCount() - 1;
+    }
+
+    // Update radio groups if we're inserting a new menu item.
+    // Inserting radio and non-radio item has a different impact
+    // on radio groups, so we have to handle each case separately.
+    // (Inserting a radio item in the middle of exisiting groups extends this group,
+    // but inserting a non-radio item breaks it into two subgroups.)
     bool check = false;
-
-    if ( item->IsSeparator() )
+    if ( item->IsRadio() )
     {
-        // nothing to do here
+        if ( !m_radioData )
+            m_radioData = new wxMenuRadioItemsData;
+
+        if ( m_radioData->UpdateOnInsertRadio(pos) )
+            check = true; // ensure that we have a checked item in the radio group
     }
-    else
+    else if ( m_radioData )
     {
-        wxMenu *pSubMenu = item->GetSubMenu() ;
-        if ( pSubMenu != NULL )
+        if ( m_radioData->UpdateOnInsertNonRadio(pos) )
         {
-            wxASSERT_MSG( pSubMenu->GetHMenu() != NULL , wxT("invalid submenu added"));
-            pSubMenu->m_menuParent = this ;
-
-            pSubMenu->DoRearrange();
-        }
-        else if ( item->IsRadio() )
-        {
-            // If a previous or next item is a radio button, add this radio
-            // button to the existing radio group. Otherwise start a new one
-            // for it.
-            wxMenuItemList& items = GetMenuItems();
-
-            size_t const
-                posItem = pos == (size_t)-1 ? items.GetCount() - 1 : pos;
-
-            wxMenuItemList::compatibility_iterator node = items.Item(posItem);
-            wxCHECK_MSG( node, false, wxS("New item must have been inserted") );
-
-            bool foundGroup = false;
-            if ( node->GetPrevious() )
-            {
-                wxMenuItem* const prev = node->GetPrevious()->GetData();
-
-                if ( prev->IsRadio() )
-                {
-                    // This item is in the same group as the preceding one so
-                    // we should use the same starting item, but getting it is
-                    // a bit difficult as we can't query the start radio group
-                    // item for it.
-                    const int groupStart = prev->IsRadioGroupStart()
-                                            ? posItem - 1
-                                            : prev->GetRadioGroupStart();
-                    item->SetRadioGroupStart(groupStart);
-
-                    // We must also account for the new item by incrementing
-                    // the index of the last item in this group.
-                    wxMenuItem* const first = items.Item(groupStart)->GetData();
-                    first->SetRadioGroupEnd(first->GetRadioGroupEnd() + 1);
-
-                    foundGroup = true;
-                }
-            }
-
-            if ( !foundGroup && node->GetNext() )
-            {
-                wxMenuItem* const next = node->GetNext()->GetData();
-
-                if ( next->IsRadio() )
-                {
-                    // This item is the new starting item of this group as the
-                    // previous item is not a radio item.
-                    wxASSERT_MSG( next->IsRadioGroupStart(),
-                                  wxS("Where is the start of this group?") );
-
-                    // The index of the last item of the radio group must be
-                    // incremented to account for the new item.
-                    item->SetAsRadioGroupStart();
-                    item->SetRadioGroupEnd(next->GetRadioGroupEnd() + 1);
-
-                    // And the previous start item is not one any longer.
-                    next->SetAsRadioGroupStart(false);
-
-                    foundGroup = true;
-                }
-            }
-
-            if ( !foundGroup )
-            {
-                // start a new radio group
-                item->SetAsRadioGroupStart();
-                item->SetRadioGroupEnd(posItem);
-
-                // ensure that we have a checked item in the radio group
-                check = true;
-            }
-        }
-        else
-        {
-            if ( item->GetId() == idMenuTitle )
-                item->GetMenu()->Enable( idMenuTitle, false );
-        }
-    }
-
-    // We also need to update the indices of radio group start and end we store
-    // in any existing radio items after this item.
-    if ( pos < GetMenuItemCount() - 1 ) // takes into account pos == -1 case
-    {
-        for ( wxMenuItemList::compatibility_iterator
-                node = GetMenuItems().Item(pos + 1);
-                node;
-                node = node->GetNext() )
-        {
-            wxMenuItem* const item = node->GetData();
-            if ( item->IsRadio() )
-            {
-                if ( item->IsRadioGroupStart() )
-                {
-                    // If the starting item is after the just inserted one,
-                    // then the end one must be after it too and needs to be
-                    // updated.
-                    item->SetRadioGroupEnd(item->GetRadioGroupEnd() + 1);
-                }
-                else // Not the first radio group item.
-                {
-                    // We need to update the start item index only if it is
-                    // after the just inserted item.
-                    const int groupStart = item->GetRadioGroupStart();
-                    if ( (size_t)groupStart > pos )
-                        item->SetRadioGroupStart(groupStart + 1);
-                }
-            }
+            // One of the exisiting groups has been split into two subgroups.
+            wxFAIL_MSG(wxS("Inserting non-radio item inside a radio group?"));
         }
     }
 
@@ -271,34 +184,15 @@ wxMenuItem* wxMenu::DoInsert(size_t pos, wxMenuItem *item)
 
 wxMenuItem *wxMenu::DoRemove(wxMenuItem *item)
 {
-    if ( item->IsRadio() )
+    // Update indices of radio groups.
+    if ( m_radioData )
     {
-        // Check if we're removing the item starting the radio group
-        if ( item->IsRadioGroupStart() )
+        int pos = GetMenuItems().IndexOf(item);
+        if ( m_radioData->UpdateOnRemoveItem(pos) )
         {
-            // Yes, we do, update the next radio group item, if any, to be the
-            // start one now.
-            const int endGroup = item->GetRadioGroupEnd();
-
-            wxMenuItemList::compatibility_iterator
-                node = GetMenuItems().Item(endGroup);
-            wxASSERT_MSG( node, wxS("Should have valid radio group end") );
-
-            while ( node->GetData() != item )
-            {
-                const wxMenuItemList::compatibility_iterator
-                    prevNode = node->GetPrevious();
-                wxMenuItem* const prevItem = prevNode->GetData();
-                if ( prevItem == item )
-                {
-                    prevItem->SetAsRadioGroupStart();
-                    prevItem->SetRadioGroupEnd(endGroup);
-                    break;
-                }
-
-                node = prevNode;
-            }
+            wxASSERT_MSG( item->IsRadio(), wxS("Removing non radio button from radio group?") );
         }
+        //else: item being removed is not in a radio group
     }
 
 /*
@@ -465,32 +359,6 @@ bool wxMenu::HandleCommandUpdateStatus( wxMenuItem* item, wxWindow* senderWindow
         if (event.GetSetEnabled())
             Enable(menuid, event.GetEnabled());
     }
-    else
-    {
-#if wxOSX_USE_CARBON
-        // these two items are also managed by the Carbon Menu Manager, therefore we must
-        // always reset them ourselves
-        UInt32 cmd = 0;
-
-        if ( menuid == wxApp::s_macExitMenuItemId )
-        {
-            cmd = kHICommandQuit;
-        }
-        else if (menuid == wxApp::s_macPreferencesMenuItemId )
-        {
-            cmd = kHICommandPreferences;
-        }
-
-        if ( cmd != 0 )
-        {
-            if ( !item->IsEnabled() || wxDialog::OSXHasModalDialogsOpen() )
-                DisableMenuCommand( NULL , cmd ) ;
-            else
-                EnableMenuCommand( NULL , cmd ) ;
-
-        }
-#endif
-    }
 
     return processed;
 }
@@ -599,7 +467,6 @@ static wxMenu *CreateAppleMenu()
         appleMenu->AppendSeparator();
     }
 
-#if !wxOSX_USE_CARBON
     if ( wxApp::s_macPreferencesMenuItemId != wxID_NONE )
     {
         appleMenu->Append( wxApp::s_macPreferencesMenuItemId,
@@ -622,7 +489,6 @@ static wxMenu *CreateAppleMenu()
     wxString quitLabel;
     quitLabel = wxString::Format(_("Quit %s"), wxTheApp ? wxTheApp->GetAppDisplayName() : _("Application"));
     appleMenu->Append( wxApp::s_macExitMenuItemId, quitLabel + "\tCtrl+Q" );
-#endif // !wxOSX_USE_CARBON
 
     return appleMenu;
 }
@@ -672,11 +538,7 @@ wxMenuBar::~wxMenuBar()
     if (s_macCommonMenuBar == this)
         s_macCommonMenuBar = NULL;
 
-    if (s_macInstalledMenuBar == this)
-    {
-        gs_emptyMenuBar->GetPeer()->MakeRoot();
-        s_macInstalledMenuBar = NULL;
-    }
+    MacUninstallMenuBar();
     wxDELETE( m_rootMenu );
     // apple menu is a submenu, therefore we don't have to delete it
     m_appleMenu = NULL;
@@ -688,7 +550,16 @@ wxMenuBar::~wxMenuBar()
 
 void wxMenuBar::Refresh(bool WXUNUSED(eraseBackground), const wxRect *WXUNUSED(rect))
 {
-    wxCHECK_RET( IsAttached(), wxT("can't refresh unatteched menubar") );
+    wxCHECK_RET( IsAttached(), wxT("can't refresh unattached menubar") );
+}
+
+void wxMenuBar::MacUninstallMenuBar()
+{
+  if (s_macInstalledMenuBar == this)
+  {
+    gs_emptyMenuBar->GetPeer()->MakeRoot();
+    s_macInstalledMenuBar = NULL;
+  }
 }
 
 void wxMenuBar::MacInstallMenuBar()

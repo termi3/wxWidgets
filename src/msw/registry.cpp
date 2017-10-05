@@ -49,18 +49,6 @@
 typedef unsigned char *RegString;
 typedef BYTE* RegBinary;
 
-#ifndef HKEY_PERFORMANCE_DATA
-    #define HKEY_PERFORMANCE_DATA ((HKEY)0x80000004)
-#endif
-
-#ifndef HKEY_CURRENT_CONFIG
-    #define HKEY_CURRENT_CONFIG ((HKEY)0x80000005)
-#endif
-
-#ifndef HKEY_DYN_DATA
-    #define HKEY_DYN_DATA ((HKEY)0x80000006)
-#endif
-
 #ifndef KEY_WOW64_64KEY
     #define KEY_WOW64_64KEY 0x0100
 #endif
@@ -83,9 +71,9 @@ aStdKeys[] =
   { HKEY_CURRENT_USER,      wxT("HKEY_CURRENT_USER"),      wxT("HKCU") },
   { HKEY_LOCAL_MACHINE,     wxT("HKEY_LOCAL_MACHINE"),     wxT("HKLM") },
   { HKEY_USERS,             wxT("HKEY_USERS"),             wxT("HKU")  }, // short name?
-  { HKEY_PERFORMANCE_DATA,  wxT("HKEY_PERFORMANCE_DATA"),  wxT("HKPD") },
+  { HKEY_PERFORMANCE_DATA,  wxT("HKEY_PERFORMANCE_DATA"),  wxT("HKPD") }, // (Obsolete under XP and later)
   { HKEY_CURRENT_CONFIG,    wxT("HKEY_CURRENT_CONFIG"),    wxT("HKCC") },
-  { HKEY_DYN_DATA,          wxT("HKEY_DYN_DATA"),          wxT("HKDD") }, // short name?
+  { HKEY_DYN_DATA,          wxT("HKEY_DYN_DATA"),          wxT("HKDD") }, // (Obsolete under XP and later)
 };
 
 // the registry name separator (perhaps one day MS will change it to '/' ;-)
@@ -135,6 +123,33 @@ static wxString GetFullName(const wxRegKey *pKey, const wxString& szValue);
 // be passed to win32 registry functions; specifically, converts empty string
 // to NULL
 static inline const wxChar *RegValueStr(const wxString& szValue);
+
+// Return the user-readable name of the given REG_XXX type constant.
+static wxString GetTypeString(DWORD dwType)
+{
+#define REG_TYPE_TO_STR(type) case REG_ ## type: return wxS(#type)
+
+    switch ( dwType )
+    {
+        REG_TYPE_TO_STR(NONE);
+        REG_TYPE_TO_STR(SZ);
+        REG_TYPE_TO_STR(EXPAND_SZ);
+        REG_TYPE_TO_STR(BINARY);
+        REG_TYPE_TO_STR(DWORD);
+        // REG_TYPE_TO_STR(DWORD_LITTLE_ENDIAN); -- same as REG_DWORD
+        REG_TYPE_TO_STR(DWORD_BIG_ENDIAN);
+        REG_TYPE_TO_STR(LINK);
+        REG_TYPE_TO_STR(MULTI_SZ);
+        REG_TYPE_TO_STR(RESOURCE_LIST);
+        REG_TYPE_TO_STR(FULL_RESOURCE_DESCRIPTOR);
+        REG_TYPE_TO_STR(RESOURCE_REQUIREMENTS_LIST);
+        REG_TYPE_TO_STR(QWORD);
+        // REG_TYPE_TO_STR(QWORD_LITTLE_ENDIAN); -- same as REG_QWORD
+
+        default:
+            return wxString::Format(_("unknown (%lu)"), dwType);
+    }
+}
 
 // ============================================================================
 // implementation of wxRegKey class
@@ -459,7 +474,6 @@ bool wxRegKey::Create(bool bOkIfExists)
 
   HKEY tmpKey;
   DWORD disposition;
-  // Minimum supported OS for RegCreateKeyEx: Win 95, Win NT 3.1, Win CE 1.0
   m_dwLastError = RegCreateKeyEx((HKEY) m_hRootKey, m_strKey.t_str(),
       0,    // reserved and must be 0
       NULL, // The user-defined class type of this key.
@@ -533,9 +547,10 @@ bool wxRegKey::CopyValue(const wxString& szValue,
 
     switch ( GetValueType(szValue) ) {
         case Type_String:
+        case Type_Expand_String:
             {
                 wxString strVal;
-                return QueryValue(szValue, strVal) &&
+                return QueryRawValue(szValue, strVal) &&
                        keyDst.SetValue(valueNew, strVal);
             }
 
@@ -559,7 +574,6 @@ bool wxRegKey::CopyValue(const wxString& szValue,
         // occur among the application keys (supposedly created with
         // this class)
         case Type_None:
-        case Type_Expand_String:
         case Type_Dword_big_endian:
         case Type_Link:
         case Type_Multi_String:
@@ -743,11 +757,10 @@ bool wxRegKey::DeleteSelf()
 #if wxUSE_DYNLIB_CLASS
   wxDynamicLibrary dllAdvapi32(wxT("advapi32"));
   // Minimum supported OS for RegDeleteKeyEx: Vista, XP Pro x64, Win Server 2008, Win Server 2003 SP1
-  if(dllAdvapi32.HasSymbol(wxT("RegDeleteKeyEx")))
+  typedef LONG (WINAPI *RegDeleteKeyEx_t)(HKEY, LPCTSTR, REGSAM, DWORD);
+  RegDeleteKeyEx_t wxDL_INIT_FUNC_AW(pfn, RegDeleteKeyEx, dllAdvapi32);
+  if (pfnRegDeleteKeyEx)
   {
-    typedef LONG (WINAPI *RegDeleteKeyEx_t)(HKEY, LPCTSTR, REGSAM, DWORD);
-    wxDYNLIB_FUNCTION(RegDeleteKeyEx_t, RegDeleteKeyEx, dllAdvapi32);
-
     m_dwLastError = (*pfnRegDeleteKeyEx)((HKEY) m_hRootKey, m_strKey.t_str(),
         GetMSWViewFlags(m_viewMode),
         0);    // This parameter is reserved and must be zero.
@@ -897,13 +910,15 @@ bool wxRegKey::QueryValue(const wxString& szValue, long *plValue) const
                     GetName().c_str());
       return false;
     }
-    else {
-      // check that we read the value of right type
-      wxASSERT_MSG( IsNumericValue(szValue),
-                    wxT("Type mismatch in wxRegKey::QueryValue().")  );
 
-      return true;
+    // check that we read the value of right type
+    if ( dwType != REG_DWORD_LITTLE_ENDIAN && dwType != REG_DWORD_BIG_ENDIAN ) {
+      wxLogError(_("Registry value \"%s\" is not numeric (but of type %s)"),
+                 GetFullName(this, szValue), GetTypeString(dwType));
+      return false;
     }
+
+    return true;
   }
   else
     return false;
@@ -911,10 +926,6 @@ bool wxRegKey::QueryValue(const wxString& szValue, long *plValue) const
 
 bool wxRegKey::SetValue(const wxString& szValue, const wxMemoryBuffer& buffer)
 {
-#ifdef __TWIN32__
-  wxFAIL_MSG("RegSetValueEx not implemented by TWIN32");
-  return false;
-#else
   if ( CONST_CAST Open() ) {
     m_dwLastError = RegSetValueEx((HKEY) m_hKey, RegValueStr(szValue),
                                   (DWORD) RESERVED, REG_BINARY,
@@ -926,7 +937,6 @@ bool wxRegKey::SetValue(const wxString& szValue, const wxMemoryBuffer& buffer)
   wxLogSysError(m_dwLastError, _("Can't set value of '%s'"),
                 GetFullName(this, szValue));
   return false;
-#endif
 }
 
 bool wxRegKey::QueryValue(const wxString& szValue, wxMemoryBuffer& buffer) const
@@ -939,6 +949,12 @@ bool wxRegKey::QueryValue(const wxString& szValue, wxMemoryBuffer& buffer) const
                                     &dwType, NULL, &dwSize);
 
     if ( m_dwLastError == ERROR_SUCCESS ) {
+        if ( dwType != REG_BINARY ) {
+          wxLogError(_("Registry value \"%s\" is not binary (but of type %s)"),
+                     GetFullName(this, szValue), GetTypeString(dwType));
+          return false;
+        }
+
         if ( dwSize ) {
             const RegBinary pBuf = (RegBinary)buffer.GetWriteBuf(dwSize);
             m_dwLastError = RegQueryValueEx((HKEY) m_hKey,
@@ -981,7 +997,16 @@ bool wxRegKey::QueryValue(const wxString& szValue,
                                         &dwType, NULL, &dwSize);
         if ( m_dwLastError == ERROR_SUCCESS )
         {
-            if ( !dwSize )
+            if ( dwType != REG_SZ && dwType != REG_EXPAND_SZ )
+            {
+                wxLogError(_("Registry value \"%s\" is not text (but of type %s)"),
+                             GetFullName(this, szValue), GetTypeString(dwType));
+                return false;
+            }
+
+            // We need length in characters, not bytes.
+            DWORD chars = dwSize / sizeof(wxChar);
+            if ( !chars )
             {
                 // must treat this case specially as GetWriteBuf() doesn't like
                 // being called with 0 size
@@ -991,9 +1016,6 @@ bool wxRegKey::QueryValue(const wxString& szValue,
             {
                 // extra scope for wxStringBufferLength
                 {
-                    // We need length in characters, not bytes.
-                    DWORD chars = dwSize / sizeof(wxChar);
-
                     wxStringBufferLength strBuf(strValue, chars);
                     m_dwLastError = RegQueryValueEx((HKEY) m_hKey,
                                                     RegValueStr(szValue),
@@ -1034,13 +1056,7 @@ bool wxRegKey::QueryValue(const wxString& szValue,
             }
 
             if ( m_dwLastError == ERROR_SUCCESS )
-            {
-                // check that it was the right type
-                wxASSERT_MSG( !IsNumericValue(szValue),
-                              wxT("Type mismatch in wxRegKey::QueryValue().") );
-
               return true;
-            }
         }
     }
 
@@ -1090,11 +1106,11 @@ bool wxRegKey::GetFirstValue(wxString& strValueName, long& lIndex)
 
 bool wxRegKey::GetNextValue(wxString& strValueName, long& lIndex) const
 {
-  wxASSERT( IsOpened() );
+    wxASSERT( IsOpened() );
 
-  // are we already at the end of enumeration?
-  if ( lIndex == -1 )
-    return false;
+    // are we already at the end of enumeration?
+    if ( lIndex == -1 )
+        return false;
 
     wxChar  szValueName[1024];                  // @@ use RegQueryInfoKey...
     DWORD dwValueLen = WXSIZEOF(szValueName);
@@ -1289,9 +1305,10 @@ wxString wxRegKey::FormatValue(const wxString& name) const
     switch ( type )
     {
         case Type_String:
+        case Type_Expand_String:
             {
                 wxString value;
-                if ( !QueryValue(name, value) )
+                if ( !QueryRawValue(name, value) )
                     break;
 
                 // quotes and backslashes must be quoted, linefeeds are not
@@ -1340,7 +1357,6 @@ wxString wxRegKey::FormatValue(const wxString& name) const
             }
             break;
 
-        case Type_Expand_String:
         case Type_Multi_String:
             {
                 wxString value;

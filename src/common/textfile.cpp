@@ -56,26 +56,29 @@ bool wxTextFile::OnExists() const
 }
 
 
-bool wxTextFile::OnOpen(const wxString &strBufferName, wxTextBufferOpenMode OpenMode)
+bool wxTextFile::OnOpen(const wxString &strBufferName, wxTextBufferOpenMode openMode)
 {
-    wxFile::OpenMode FileOpenMode;
+    wxFile::OpenMode fileOpenMode = wxFile::read_write;
 
-    switch ( OpenMode )
+    switch ( openMode )
     {
-        default:
-            wxFAIL_MSG( wxT("unknown open mode in wxTextFile::Open") );
-            wxFALLTHROUGH;
-
-        case ReadAccess :
-            FileOpenMode = wxFile::read;
+        case ReadAccess:
+            fileOpenMode = wxFile::read;
             break;
 
-        case WriteAccess :
-            FileOpenMode = wxFile::write;
+        case WriteAccess:
+            fileOpenMode = wxFile::write;
             break;
     }
 
-    return m_file.Open(strBufferName.c_str(), FileOpenMode);
+    if ( fileOpenMode == wxFile::read_write )
+    {
+        // This must mean it hasn't been initialized in the switch above.
+        wxFAIL_MSG( wxT("unknown open mode in wxTextFile::Open") );
+        return false;
+    }
+
+    return m_file.Open(strBufferName, fileOpenMode);
 }
 
 
@@ -267,17 +270,31 @@ bool wxTextFile::OnWrite(wxTextFileType typeNew, const wxMBConv& conv)
     wxTempFile fileTmp(fn.GetFullPath());
 
     if ( !fileTmp.IsOpened() ) {
-        wxLogError(_("can't write buffer '%s' to disk."), m_strBufferName.c_str());
+        wxLogError(_("can't write buffer '%s' to disk."), m_strBufferName);
         return false;
     }
 
+    // Writing to wxTempFile in reasonably-sized chunks is much faster than
+    // doing it line by line.
+    const size_t chunk_size = 16384;
+    wxString chunk;
+    chunk.reserve(chunk_size);
+
     size_t nCount = GetLineCount();
-    for ( size_t n = 0; n < nCount; n++ ) {
-        fileTmp.Write(GetLine(n) +
-                      GetEOL(typeNew == wxTextFileType_None ? GetLineType(n)
-                                                            : typeNew),
-                      conv);
+    for ( size_t n = 0; n < nCount; n++ )
+    {
+        chunk += GetLine(n) +
+                  GetEOL(typeNew == wxTextFileType_None ? GetLineType(n)
+                                                        : typeNew);
+        if ( chunk.size() >= chunk_size )
+        {
+            fileTmp.Write(chunk, conv);
+            chunk.clear();
+        }
     }
+
+    if ( !chunk.empty() )
+        fileTmp.Write(chunk, conv);
 
     // replace the old file with this one
     return fileTmp.Commit();

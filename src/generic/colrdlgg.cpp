@@ -18,6 +18,7 @@
 #if wxUSE_COLOURDLG
 
 #ifndef WX_PRECOMP
+    #include "wx/settings.h"
     #include "wx/utils.h"
     #include "wx/intl.h"
     #include "wx/dialog.h"
@@ -213,7 +214,7 @@ void wxGenericColourDialog::OnCustomColourMouseClick(wxMouseEvent& event)
 {
     // Find index of custom colour
     // and call the handler.
-    for (int i = 0; i < WXSIZEOF(m_customColoursBmp); i++)
+    for (unsigned i = 0; i < WXSIZEOF(m_customColoursBmp); i++)
     {
         if ( m_customColoursBmp[i]->GetId() == event.GetId() )
         {
@@ -283,7 +284,7 @@ void wxGenericColourDialog::CreateWidgets()
                                            wxBORDER_SUNKEN);
 
     // 16 bitmaps to preview custom colours (with alpha channel)
-    for (int i = 0; i < WXSIZEOF(m_customColoursBmp); i++)
+    for (unsigned i = 0; i < WXSIZEOF(m_customColoursBmp); i++)
     {
         int x = ((i % 8)*(m_smallRectangleSize.x+m_gridSpacing)) + m_customColoursRect.x;
         int y = ((i / 8)*(m_smallRectangleSize.y+m_gridSpacing)) + m_customColoursRect.y;
@@ -470,7 +471,7 @@ void wxGenericColourDialog::PaintCustomColours(wxDC& dc, int clrIndex)
     int idxStart;
     int idxEnd;
     // For clrIndex == -1 redraw all custom colours
-    if ( clrIndex < 0 || clrIndex >= WXSIZEOF(m_customColours) )
+    if ( clrIndex < 0 || static_cast<unsigned>(clrIndex) >= WXSIZEOF(m_customColours) )
     {
         idxStart = 0;
         idxEnd = WXSIZEOF(m_customColours) - 1;
@@ -501,45 +502,31 @@ void wxGenericColourDialog::PaintHighlight(wxDC& dc, bool draw)
   if ( m_colourSelection < 0 )
       return;
 
-  // Number of pixels bigger than the standard rectangle size
-  // for drawing a highlight
-  int deltaX = 2;
-  int deltaY = 2;
-
+  wxRect r(m_smallRectangleSize);
   if (m_whichKind == 1)
   {
     // Standard colours
-    int y = (int)(m_colourSelection / 8);
-    int x = (int)(m_colourSelection - (y*8));
-
-    x = (x*(m_smallRectangleSize.x + m_gridSpacing) + m_standardColoursRect.x) - deltaX;
-    y = (y*(m_smallRectangleSize.y + m_gridSpacing) + m_standardColoursRect.y) - deltaY;
-
-    if (draw)
-      dc.SetPen(*wxBLACK_PEN);
-    else
-      dc.SetPen(*wxLIGHT_GREY_PEN);
-
-    dc.SetBrush(*wxTRANSPARENT_BRUSH);
-    dc.DrawRectangle( x, y, (m_smallRectangleSize.x + (2*deltaX)), (m_smallRectangleSize.y + (2*deltaY)));
+    r.Offset(m_standardColoursRect.GetLeftTop());
   }
   else
   {
     // User-defined colours
-    int y = (int)(m_colourSelection / 8);
-    int x = (int)(m_colourSelection - (y*8));
-
-    x = (x*(m_smallRectangleSize.x + m_gridSpacing) + m_customColoursRect.x) - deltaX;
-    y = (y*(m_smallRectangleSize.y + m_gridSpacing) + m_customColoursRect.y) - deltaY;
-
-    if (draw)
-      dc.SetPen(*wxBLACK_PEN);
-    else
-      dc.SetPen(*wxLIGHT_GREY_PEN);
-
-    dc.SetBrush(*wxTRANSPARENT_BRUSH);
-    dc.DrawRectangle( x, y, (m_smallRectangleSize.x + (2*deltaX)), (m_smallRectangleSize.y + (2*deltaY)));
+    r.Offset(m_customColoursRect.GetLeftTop());
   }
+
+  const int x = (m_colourSelection % 8) * (m_smallRectangleSize.x + m_gridSpacing);
+  const int y = (m_colourSelection / 8) * (m_smallRectangleSize.y + m_gridSpacing);
+  r.Offset(x, y);
+  // Highlight is drawn with rectangle bigger than the item rectangle.
+  r.Inflate(2, 2);
+
+  // Highlighting frame is drawn with black colour.
+  // Highlighting frame is removed by drawing using dialog background colour.
+  wxPen pen(draw ? *wxBLACK_PEN : wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_3DFACE)));
+
+  dc.SetPen(pen);
+  dc.SetBrush(*wxTRANSPARENT_BRUSH);
+  dc.DrawRectangle(r);
 }
 
 void wxGenericColourDialog::PaintCustomColour(wxDC& dc)

@@ -58,12 +58,15 @@ enum wxShutdownFlags
 /**
     @class wxWindowDisabler
 
-    This class disables all windows of the application (may be with the
-    exception of one of them) in its constructor and enables them back in its
-    destructor.
+    This class disables all top level windows of the application (maybe with
+    the exception of one of them) in its constructor and enables them back in
+    its destructor.
 
     This is useful when you want to indicate to the user that the application
     is currently busy and cannot respond to user input.
+
+    @note When instantiated, this affects only windows shown on the screen and
+          not already disabled.
 
     @library{wxcore}
     @category{misc}
@@ -371,6 +374,9 @@ wxString wxGetDisplayName();
 
     Even though there are virtual key codes defined for mouse buttons, they
     cannot be used with this function currently.
+
+    In wxGTK, this function can be only used with modifier keys (@c WXK_ALT, @c
+    WXK_CONTROL and @c WXK_SHIFT) when not using X11 backend currently.
 
     @header{wx/utils.h}
 */
@@ -842,16 +848,23 @@ wxString wxGetOsDescription();
 /**
     Gets the version and the operating system ID for currently running OS. 
     The returned wxOperatingSystemId value can be used for a basic categorization
-    of the OS family; the major and minor version numbers allows to detect a specific
-    system.
-    
-    For Unix-like systems (@c wxOS_UNIX) the major and minor version integers will 
-    contain the kernel major and minor version numbers (as returned by the
-    'uname -r' command); e.g. "4" and "1" if the machine is using kernel 4.1.4.
+    of the OS family; the major, minor, and micro version numbers allows to
+    detect a specific system.
 
-    For Mac OS X systems (@c wxOS_MAC) the major and minor version integers are the
-    natural version numbers associated with the OS; e.g. "10" and "11" if the machine
-    is using Mac OS X El Capitan.
+    If on Unix-like systems the version can't be detected all three version
+    numbers will have a value of -1.
+
+    On systems where only the micro version can't be detected or doesn't make
+    sense such as Windows, it will have a value of 0.
+
+    For Unix-like systems (@c wxOS_UNIX) the major, minor, and micro version
+    integers will contain the kernel's major, minor, and micro version
+    numbers (as returned by the 'uname -r' command); e.g. "4", "1", and "4" if
+    the machine is using kernel 4.1.4.
+
+    For OS X systems (@c wxOS_MAC) the major and minor version integers are the
+    natural version numbers associated with the OS; e.g. "10", "11" and "2" if
+    the machine is using OS X El Capitan 10.11.2.
     
     For Windows-like systems (@c wxOS_WINDOWS) the major and minor version integers will 
     contain the following values:
@@ -878,7 +891,7 @@ wxString wxGetOsDescription();
 
     @header{wx/utils.h}
 */
-wxOperatingSystemId wxGetOsVersion(int* major = NULL, int* minor = NULL);
+wxOperatingSystemId wxGetOsVersion(int* major = NULL, int* minor = NULL, int* micro = NULL);
 
 /**
     Returns @true if the version of the operating system on which the program
@@ -890,7 +903,7 @@ wxOperatingSystemId wxGetOsVersion(int* major = NULL, int* minor = NULL);
 
     @header{wx/utils.h}
 */
-bool wxCheckOsVersion(int majorVsn, int minorVsn = 0);
+bool wxCheckOsVersion(int majorVsn, int minorVsn = 0, int microVsn = 0);
 
 /**
     Returns @true if the operating system the program is running under is 64
@@ -1171,10 +1184,10 @@ long wxExecute(const wxString& command, int flags = wxEXEC_ASYNC,
     In wxPerl this function is called @c Wx::ExecuteArgs.
     @endWxPerlOnly
 */
-long wxExecute(char** argv, int flags = wxEXEC_ASYNC,
+long wxExecute(const char* const* argv, int flags = wxEXEC_ASYNC,
                 wxProcess* callback = NULL,
                 const wxExecuteEnv *env = NULL);
-long wxExecute(wchar_t** argv, int flags = wxEXEC_ASYNC,
+long wxExecute(const wchar_t* const* argv, int flags = wxEXEC_ASYNC,
                 wxProcess* callback = NULL,
                 const wxExecuteEnv *env = NULL);
 //@}
@@ -1410,3 +1423,76 @@ void wxUsleep(unsigned long milliseconds);
 
 //@}
 
+
+/** @addtogroup group_funcmacro_misc */
+//@{
+/**
+    Convert decimal integer to 2-character hexadecimal string.
+
+    @param dec
+        A number to be converted.
+    @param buf
+        A pointer to the buffer that receives hexadecimal string (not prefixed
+        by @c 0x). This buffer should be large enough to hold at least
+        3 characters: 2 hexadecimal digits and the terminating null character.
+
+    @remarks
+        Returned string is composed of uppercase hexdecimal characters.
+
+    @header{wx/utils.h}
+*/
+void wxDecToHex(unsigned char dec, wxChar *buf);
+
+/**
+    Convert decimal integer to 2-character hexadecimal string.
+
+    @param dec
+        A number to be converted.
+    @return
+        String containing hexadecimal string, not prefixed by @c 0x,
+        composed of uppercase characters.
+
+    @header{wx/utils.h}
+*/
+wxString wxDecToHex(unsigned char dec);
+
+/**
+    Returns 2 characters of hexadecimal representation of a given number.
+
+    @param dec
+        A number to be converted.
+    @param ch1
+        Pointer to the variable that receives 1st hexadecimal character.
+        It must not be @NULL.
+    @param ch2
+        Pointer to the variable that receives 2nd hexadecimal character.
+        It must not be @NULL.
+
+    @remarks
+        Returned characters are uppercase.
+
+    @header{wx/utils.h}
+*/
+void wxDecToHex(unsigned char dec, char* ch1, char* ch2);
+
+/**
+    Convert 2-character hexadecimal string to decimal integer.
+
+    @param buf
+        String containing uppercase hexadecimal characters, not prefixed
+        by @c 0x. Its length must be at least 2 characters. If it is longer
+        than 2 characters, only first two will be converted to the number.
+
+    @return
+        An integer number between 0 and 255 that is equivalent to the number
+        in @a buf, or @c -1 if @a buf is not a hexadecimal string.
+
+    @header{wx/utils.h}
+*/
+int wxHexToDec(const wxString& buf);
+
+/**
+    @overload
+*/
+int wxHexToDec(const char* buf);
+//@}

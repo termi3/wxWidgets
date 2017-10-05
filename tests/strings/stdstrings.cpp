@@ -20,6 +20,8 @@
     #include "wx/wx.h"
 #endif // WX_PRECOMP
 
+#include <algorithm>
+
 // ----------------------------------------------------------------------------
 // test class
 // ----------------------------------------------------------------------------
@@ -50,6 +52,7 @@ private:
 #if wxUSE_STD_STRING
         CPPUNIT_TEST( StdConversion );
 #endif
+        CPPUNIT_TEST( StdAlgo );
     CPPUNIT_TEST_SUITE_END();
 
     void StdConstructors();
@@ -71,6 +74,7 @@ private:
 #if wxUSE_STD_STRING
     void StdConversion();
 #endif
+    void StdAlgo();
 
     wxDECLARE_NO_COPY_CLASS(StdStringTestCase);
 };
@@ -603,10 +607,32 @@ void StdStringTestCase::StdConversion()
 #endif
     CPPUNIT_ASSERT_EQUAL( "hello", s6 );
 
+#if wxUSE_UNSAFE_WXSTRING_CONV
     std::string s7(s4);
     CPPUNIT_ASSERT( s7 == "hello" );
+#endif
 
     wxStdWideString s8(s4);
     CPPUNIT_ASSERT( s8 == "hello" );
+
+    std::string s9("\xF0\x9F\x90\xB1\0\xE7\x8C\xAB", 9); /* U+1F431 U+0000 U+732B */
+    wxString s10 = wxString::FromUTF8(s9);
+    CPPUNIT_ASSERT_EQUAL( s9, s10.ToStdString(wxConvUTF8) );
+
+    std::string s11("xyz\0\xFF", 5); /* an invalid UTF-8 sequence */
+    CPPUNIT_ASSERT_EQUAL( wxString::FromUTF8(s11), "" );
 }
 #endif // wxUSE_STD_STRING
+
+void StdStringTestCase::StdAlgo()
+{
+    // Unfortunately this currently doesn't work with libc++ in C++11 mode, see
+    // comment near iter_swap() definition in wx/string.h.
+#if __cplusplus < 201103L || !defined(_LIBCPP_VERSION)
+    wxString s("AB");
+    std::reverse(s.begin(), s.end());
+    CPPUNIT_ASSERT_EQUAL( "BA", s );
+#else
+    wxLogWarning("Skipping std::reverse() test broken with C++11/libc++");
+#endif
+}

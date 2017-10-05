@@ -462,19 +462,6 @@ void wxMediaCtrl::DoMoveWindow(int x, int y, int w, int h)
         m_imp->Move(x, y, w, h);
 }
 
-//---------------------------------------------------------------------------
-// wxMediaCtrl::MacVisibilityChanged
-//---------------------------------------------------------------------------
-#ifdef __WXOSX_CARBON__
-void wxMediaCtrl::MacVisibilityChanged()
-{
-    wxControl::MacVisibilityChanged();
-
-    if(m_imp)
-        m_imp->MacVisibilityChanged();
-}
-#endif
-
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //
 //  wxMediaBackendCommonBase
@@ -539,7 +526,7 @@ void wxMediaBackendCommonBase::QueueStopEvent()
 
 //
 // Force link default backends in -
-// see http://wiki.wxwidgets.org/wiki.pl?RTTI
+// see https://wiki.wxwidgets.org/RTTI
 //
 #include "wx/html/forcelnk.h"
 

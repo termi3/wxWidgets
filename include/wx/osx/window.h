@@ -19,10 +19,7 @@ class WXDLLIMPEXP_FWD_CORE wxScrollBar;
 class WXDLLIMPEXP_FWD_CORE wxPanel;
 class WXDLLIMPEXP_FWD_CORE wxNonOwnedWindow;
 
-#if wxOSX_USE_CARBON
-    class WXDLLIMPEXP_FWD_CORE wxMacControl ;
-    typedef wxMacControl wxOSXWidgetImpl;
-#elif wxOSX_USE_COCOA_OR_IPHONE
+#if wxOSX_USE_COCOA_OR_IPHONE
     class WXDLLIMPEXP_FWD_CORE wxWidgetImpl ;
     typedef wxWidgetImpl wxOSXWidgetImpl;
 #endif
@@ -125,10 +122,10 @@ public:
     
 #if wxUSE_DRAG_AND_DROP
     virtual void SetDropTarget( wxDropTarget *dropTarget ) wxOVERRIDE;
-#endif
 
     // Accept files for dragging
     virtual void DragAcceptFiles( bool accept ) wxOVERRIDE;
+#endif
 
     // implementation from now on
     // --------------------------

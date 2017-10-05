@@ -107,7 +107,11 @@ private:
     wxString m_pageTitle;
 
     OSXWebViewPtr m_webView;
-
+    
+    WX_NSObject m_frameLoadMonitor;
+    WX_NSObject m_policyDelegate;
+    WX_NSObject m_UIDelegate;
+    
     // we may use this later to setup our own mouse events,
     // so leave it in for now.
     void* m_webKitCtrlEventHandler;
@@ -165,7 +169,7 @@ class WXDLLIMPEXP_CORE wxWebKitStateChangedEvent : public wxCommandEvent
 
 public:
     int GetState() { return m_state; }
-    void SetState(const int state) { m_state = state; }
+    void SetState(int state) { m_state = state; }
     wxString GetURL() { return m_url; }
     void SetURL(const wxString& url) { m_url = url; }
 

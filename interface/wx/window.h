@@ -150,7 +150,9 @@ enum wxWindowVariant
            The window is transparent, that is, it will not receive paint
            events. Windows only.
     @style{wxTAB_TRAVERSAL}
-           Use this to enable tab traversal for non-dialog windows.
+           This style is used by wxWidgets for the windows supporting TAB
+           navigation among their children, such as wxDialog and wxPanel. It
+           should almost never be used in the application code.
     @style{wxWANTS_CHARS}
            Use this to indicate that the window wants to get all char/key
            events for all keys - even for keys like TAB or ENTER which are
@@ -190,11 +192,6 @@ enum wxWindowVariant
     @endStyleTable
 
     @beginExtraStyleTable
-    @style{wxWS_EX_VALIDATE_RECURSIVELY}
-           By default, wxWindow::Validate(), wxWindow::TransferDataTo() and
-           wxWindow::TransferDataFromWindow() only work on
-           direct children of the window (compatible behaviour).
-           Set this flag to make them recursively descend into all subwindows.
     @style{wxWS_EX_BLOCK_EVENTS}
            wxCommandEvents and the objects of the derived classes are
            forwarded to the parent window and so on recursively by default.
@@ -551,7 +548,7 @@ public:
 
         @since 2.9.4
      */
-    bool IsDescendant(wxWindowBase* win) const;
+    bool IsDescendant(wxWindow* win) const;
 
     /**
         Reparents the window, i.e.\ the window will be removed from its
@@ -588,7 +585,7 @@ public:
         @param vflag
             Whether the vertical scroll bar should always be visible.
 
-        @remarks This function is currently only implemented under Mac/Carbon.
+        @remarks This function is currently not implemented.
     */
     virtual void AlwaysShowScrollbars(bool hflag = true, bool vflag = true);
 
@@ -992,7 +989,7 @@ public:
     static wxPoint FromDIP(const wxPoint& pt, const wxWindow* w);
 
     /// @overload
-    static wxSize FromDIP(const wxSize& sz, const wxWindow* w);
+    static wxSize FromDIP(int d, const wxWindow* w);
 
 
     /**
@@ -1059,7 +1056,7 @@ public:
     static wxPoint ToDIP(const wxPoint& pt, const wxWindow* w);
 
     /// @overload
-    static wxSize ToDIP(const wxSize& sz, const wxWindow* w);
+    static wxSize ToDIP(int d, const wxWindow* w);
 
     /**
         This functions returns the best acceptable minimal size for the window.
@@ -2220,6 +2217,12 @@ public:
     bool UseBgCol() const;
 
     /**
+        Return @true if a background colour has been set for this window.
+        Same as @ref UseBgCol()
+    */
+    bool UseBackgroundColour() const;
+
+    /**
         Sets the font of the window but prevents it from being inherited by the
         children of this window.
 
@@ -2234,6 +2237,18 @@ public:
         @see SetForegroundColour(), InheritAttributes()
     */
     void SetOwnForegroundColour(const wxColour& colour);
+
+    /**
+        Return @true if a foreground colour has been set for this window.
+    */
+    bool UseForegroundColour() const;
+
+    /**
+        Return @true if this window inherits the foreground colour from its parent.
+
+        @see SetOwnForegroundColour(), InheritAttributes()
+    */
+    bool InheritsForegroundColour() const;
 
     /**
         @deprecated use wxDC::SetPalette instead.
@@ -2750,9 +2765,7 @@ public:
             animation time for the current platform is used.
 
         @note Currently this function is only implemented in wxMSW and wxOSX
-              (for wxTopLevelWindows only in Carbon version and for any kind of
-              windows in Cocoa) and does the same thing as Show() in the other
-              ports.
+              and does the same thing as Show() in the other ports.
 
         @since 2.9.0
 
@@ -2938,8 +2951,8 @@ public:
         Transfers values from child controls to data areas specified by their
         validators. Returns @false if a transfer failed.
 
-        If the window has @c wxWS_EX_VALIDATE_RECURSIVELY extra style flag set,
-        the method will also call TransferDataFromWindow() of all child windows.
+        Notice that this also calls TransferDataFromWindow() for all children
+        recursively.
 
         @see TransferDataToWindow(), wxValidator, Validate()
     */
@@ -2949,8 +2962,8 @@ public:
         Transfers values to child controls from data areas specified by their
         validators.
 
-        If the window has @c wxWS_EX_VALIDATE_RECURSIVELY extra style flag set,
-        the method will also call TransferDataToWindow() of all child windows.
+        Notice that this also calls TransferDataToWindow() for all children
+        recursively.
 
         @return Returns @false if a transfer failed.
 
@@ -2960,8 +2973,8 @@ public:
 
     /**
         Validates the current values of the child controls using their validators.
-        If the window has @c wxWS_EX_VALIDATE_RECURSIVELY extra style flag set,
-        the method will also call Validate() of all child windows.
+
+        Notice that this also calls Validate() for all children recursively.
 
         @return Returns @false if any of the validations failed.
 
@@ -3056,6 +3069,9 @@ public:
 
     /**
         Sets the layout direction for this window.
+
+        This function is only supported under MSW and GTK platforms, but not
+        under Mac currently.
     */
     virtual void SetLayoutDirection(wxLayoutDirection dir);
 

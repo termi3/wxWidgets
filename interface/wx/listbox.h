@@ -46,7 +46,7 @@
     @style{wxLB_NEEDED_SB}
         Only create a vertical scrollbar if needed.
     @style{wxLB_NO_SB}
-        Don't create vertical scrollbar (wxMSW only).
+        Don't create vertical scrollbar (wxMSW and wxGTK only).
     @style{wxLB_SORT}
         The listbox contents are sorted in alphabetical order.
     @endStyleTable
@@ -297,10 +297,29 @@ public:
      */
     virtual bool IsSorted() const;
 
+    /**
+        Return the number of items that can fit vertically in the visible area of
+        the listbox.
+
+        Returns -1 if the number of items per page couldn't be determined.
+
+        @since 3.1.0
+    */
+    int GetCountPerPage() const;
+
+    /**
+        Return the index of the topmost visible item.
+
+        Returns ::wxNOT_FOUND if the method is not implemented for the current
+        platform.
+
+        @since 3.1.0
+    */
+    int GetTopItem() const;
 
     // NOTE: Phoenix needs to see the implementation of pure virtuals so it
     // knows that this class is not abstract.
-    virtual unsigned int GetCount() const; 
+    virtual unsigned int GetCount() const;
     virtual wxString GetString(unsigned int n) const; 
     virtual void SetString(unsigned int n, const wxString& s); 
     virtual int FindString(const wxString& s, bool bCase = false) const;     

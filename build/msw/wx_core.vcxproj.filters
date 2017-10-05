@@ -612,6 +612,9 @@
     <ClCompile Include="..\..\src\msw\cursor.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\msw\customdraw.cpp">
+      <Filter>MSW Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\msw\data.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
@@ -690,6 +693,9 @@
     <ClCompile Include="..\..\src\msw\graphics.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\msw\graphicsd2d.cpp">
+      <Filter>MSW Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\msw\headerctrl.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
@@ -756,6 +762,9 @@
     <ClCompile Include="..\..\src\msw\ole\automtn.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\msw\ole\comimpl.cpp">
+      <Filter>MSW Sources</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\msw\ole\dataobj.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
@@ -778,9 +787,6 @@
       <Filter>MSW Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\msw\palette.cpp">
-      <Filter>MSW Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\msw\panel.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\msw\pen.cpp">
@@ -811,6 +817,9 @@
       <Filter>MSW Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\msw\richmsgdlg.cpp">
+      <Filter>MSW Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\msw\rt\utilsrt.cpp">
       <Filter>MSW Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\msw\scrolbar.cpp">
@@ -894,9 +903,6 @@
     <ClCompile Include="..\..\src\xrc\xmlreshandler.cpp">
       <Filter>Common Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\msw\graphicsd2d.cpp">
-      <Filter>MSW Sources</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\msw\version.rc">
@@ -923,6 +929,9 @@
       <Filter>Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\wx\anybutton.h">
+      <Filter>Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\wx\appprogress.h">
       <Filter>Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\wx\artprov.h">
@@ -1309,6 +1318,9 @@
     <ClInclude Include="..\..\include\wx\infobar.h">
       <Filter>Common Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\wx\itemattr.h">
+      <Filter>Common Headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\wx\itemid.h">
       <Filter>Common Headers</Filter>
     </ClInclude>
@@ -1540,6 +1552,9 @@
     <ClInclude Include="..\..\include\wx\msw\ole\automtn.h">
       <Filter>MSW Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\wx\msw\ole\comimpl.h">
+      <Filter>MSW Headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\wx\msw\ole\dataform.h">
       <Filter>MSW Headers</Filter>
     </ClInclude>
@@ -1606,6 +1621,9 @@
     <ClInclude Include="..\..\include\wx\msw\richmsgdlg.h">
       <Filter>MSW Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\wx\msw\rt\utils.h">
+      <Filter>MSW Headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\wx\msw\scrolbar.h">
       <Filter>MSW Headers</Filter>
     </ClInclude>
@@ -1666,9 +1684,6 @@
     <ClInclude Include="..\..\include\wx\msw\window.h">
       <Filter>MSW Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\wx\appprogress.h">
-      <Filter>Common Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\wx\nativewin.h">
       <Filter>Common Headers</Filter>
     </ClInclude>
@@ -1697,6 +1712,9 @@
       <Filter>Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\wx\pen.h">
+      <Filter>Common Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\wx\peninfobase.h">
       <Filter>Common Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\wx\persist.h">

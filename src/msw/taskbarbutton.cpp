@@ -126,16 +126,15 @@ typedef enum TBPFLAG
     TBPF_PAUSED = 0x8
 } TBPFLAG;
 
+#ifndef PROPERTYKEY_DEFINED
 typedef struct _tagpropertykey
 {
     GUID fmtid;
     DWORD pid;
 } PROPERTYKEY;
+#endif // !PROPERTYKEY_DEFINED
 
 #define REFPROPERTYKEY const PROPERTYKEY &
-
-typedef struct tagPROPVARIANT PROPVARIANT;
-#define REFPROPVARIANT const PROPVARIANT &
 
 #define DEFINE_PROPERTYKEY(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8, pid) \
     const PROPERTYKEY name  = \
@@ -147,6 +146,56 @@ DEFINE_PROPERTYKEY(PKEY_AppUserModel_IsDestListSeparator,
     0x9f4c2855, 0x9f79, 0x4b39, 0xa8, 0xd0, 0xe1, 0xd4, 0x2d, 0xe1, 0xd5, 0xf3, 6);
 DEFINE_PROPERTYKEY(PKEY_Link_Arguments,
     0x436f2667, 0x14e2, 0x4feb, 0xb3, 0x0a, 0x14, 0x6c, 0x53, 0xb5, 0xb6, 0x74, 100);
+
+#ifdef wxUSE_UNICODE
+#define IShellLink      wxIShellLinkW
+
+DEFINE_GUID(wxIID_IShellLink,
+    0x000214F9, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
+#else
+#define IShellLink      wxIShellLinkA
+
+DEFINE_GUID(wxIID_IShellLink,
+    0x000214EE, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
+#endif  // wxUSE_UNICODE
+
+typedef enum _SIGDN
+{
+    SIGDN_NORMALDISPLAY               = 0,
+    SIGDN_PARENTRELATIVEPARSING       = (int)0x80018001,
+    SIGDN_DESKTOPABSOLUTEPARSING      = (int)0x80028000,
+    SIGDN_PARENTRELATIVEEDITING       = (int)0x80031001,
+    SIGDN_DESKTOPABSOLUTEEDITING      = (int)0x8004c000,
+    SIGDN_FILESYSPATH                 = (int)0x80058000,
+    SIGDN_URL                         = (int)0x80068000,
+    SIGDN_PARENTRELATIVEFORADDRESSBAR = (int)0x8007c001,
+    SIGDN_PARENTRELATIVE              = (int)0x80080001
+} SIGDN;
+
+enum _SICHINTF
+{
+    SICHINT_DISPLAY                       = 0,
+    SICHINT_ALLFIELDS                     = (int)0x80000000,
+    SICHINT_CANONICAL                     = 0x10000000,
+    SICHINT_TEST_FILESYSPATH_IF_NOT_EQUAL = 0x20000000
+};
+
+typedef DWORD SICHINTF;
+typedef ULONG SFGAOF;
+
+typedef enum KNOWNDESTCATEGORY
+{
+    KDC_FREQUENT    = 1,
+    KDC_RECENT  = ( KDC_FREQUENT + 1 )
+} KNOWNDESTCATEGORY;
+
+typedef enum APPDOCLISTTYPE
+{
+    ADLT_RECENT   = 0,
+    ADLT_FREQUENT = ( ADLT_RECENT + 1 )
+} APPDOCLISTTYPE;
+
+} // anonymous namespace
 
 class wxITaskbarList : public IUnknown
 {
@@ -210,42 +259,6 @@ public:
     virtual HRESULT wxSTDCALL SetPath(LPCWSTR) = 0;
 };
 
-#ifdef wxUSE_UNICODE
-#define IShellLink      wxIShellLinkW
-
-DEFINE_GUID(wxIID_IShellLink,
-    0x000214F9, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-#else
-#define IShellLink      wxIShellLinkA
-
-DEFINE_GUID(wxIID_IShellLink,
-    0x000214EE, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-#endif  // wxUSE_UNICODE
-
-typedef enum _SIGDN
-{
-    SIGDN_NORMALDISPLAY               = 0,
-    SIGDN_PARENTRELATIVEPARSING       = (int)0x80018001,
-    SIGDN_DESKTOPABSOLUTEPARSING      = (int)0x80028000,
-    SIGDN_PARENTRELATIVEEDITING       = (int)0x80031001,
-    SIGDN_DESKTOPABSOLUTEEDITING      = (int)0x8004c000,
-    SIGDN_FILESYSPATH                 = (int)0x80058000,
-    SIGDN_URL                         = (int)0x80068000,
-    SIGDN_PARENTRELATIVEFORADDRESSBAR = (int)0x8007c001,
-    SIGDN_PARENTRELATIVE              = (int)0x80080001
-} SIGDN;
-
-enum _SICHINTF
-{
-    SICHINT_DISPLAY                       = 0,
-    SICHINT_ALLFIELDS                     = (int)0x80000000,
-    SICHINT_CANONICAL                     = 0x10000000,
-    SICHINT_TEST_FILESYSPATH_IF_NOT_EQUAL = 0x20000000
-};
-
-typedef DWORD SICHINTF;
-typedef ULONG SFGAOF;
-
 class IShellItem : public IUnknown
 {
 public:
@@ -278,15 +291,9 @@ public:
     virtual HRESULT wxSTDCALL GetCount(DWORD *) = 0;
     virtual HRESULT wxSTDCALL GetAt(DWORD, PROPERTYKEY *) = 0;
     virtual HRESULT wxSTDCALL GetValue(REFPROPERTYKEY, PROPVARIANT *) = 0;
-    virtual HRESULT wxSTDCALL SetValue(REFPROPERTYKEY, REFPROPVARIANT) = 0;
+    virtual HRESULT wxSTDCALL SetValue(REFPROPERTYKEY, const PROPVARIANT&) = 0;
     virtual HRESULT wxSTDCALL Commit() = 0;
 };
-
-typedef enum KNOWNDESTCATEGORY
-{
-    KDC_FREQUENT    = 1,
-    KDC_RECENT  = ( KDC_FREQUENT + 1 )
-} KNOWNDESTCATEGORY;
 
 class ICustomDestinationList : public IUnknown
 {
@@ -302,18 +309,15 @@ public:
     virtual HRESULT wxSTDCALL AbortList() = 0;
 };
 
-typedef enum APPDOCLISTTYPE
-{
-    ADLT_RECENT   = 0,
-    ADLT_FREQUENT = ( ADLT_RECENT + 1 )
-} APPDOCLISTTYPE;
-
 class IApplicationDocumentLists : public IUnknown
 {
 public:
     virtual HRESULT wxSTDCALL SetAppID(LPCWSTR) = 0;
     virtual HRESULT wxSTDCALL GetList(APPDOCLISTTYPE, UINT, REFIID, void**) = 0;
 };
+
+namespace
+{
 
 inline HRESULT InitPropVariantFromBoolean(BOOL fVal, PROPVARIANT *ppropvar)
 {
@@ -392,7 +396,7 @@ bool AddShellLink(IObjectCollection *collection,
     }
 
     if ( item.GetType() == wxTASKBAR_JUMP_LIST_TASK ||
-         item.GetType() == wxTASKBAR_JUMP_LIST_DESTIONATION )
+         item.GetType() == wxTASKBAR_JUMP_LIST_DESTINATION )
     {
         if ( !item.GetFilePath().IsEmpty() )
             shellLink->SetPath(item.GetFilePath().wc_str());
@@ -417,7 +421,7 @@ bool AddShellLink(IObjectCollection *collection,
 
     PROPVARIANT pv;
     if ( item.GetType() == wxTASKBAR_JUMP_LIST_TASK ||
-         item.GetType() == wxTASKBAR_JUMP_LIST_DESTIONATION )
+         item.GetType() == wxTASKBAR_JUMP_LIST_DESTINATION )
     {
         hr = InitPropVariantFromString(item.GetTitle().wc_str(), &pv);
         if ( SUCCEEDED(hr) )
@@ -451,7 +455,7 @@ wxTaskBarJumpListItem* GetItemFromIShellLink(IShellLink* link)
         return NULL;
 
     wxTaskBarJumpListItem* item =
-        new wxTaskBarJumpListItem(NULL, wxTASKBAR_JUMP_LIST_DESTIONATION);
+        new wxTaskBarJumpListItem(NULL, wxTASKBAR_JUMP_LIST_DESTINATION);
 
     wxCOMPtr<IPropertyStore> linkProps;
     HRESULT hr = link->QueryInterface
@@ -492,7 +496,7 @@ wxTaskBarJumpListItem* GetItemFromIShellItem(IShellItem *shellItem)
         return NULL;
 
     wxTaskBarJumpListItem *item =
-        new wxTaskBarJumpListItem(NULL, wxTASKBAR_JUMP_LIST_DESTIONATION);
+        new wxTaskBarJumpListItem(NULL, wxTASKBAR_JUMP_LIST_DESTINATION);
 
     wchar_t *name;
     shellItem->GetDisplayName(SIGDN_FILESYSPATH, &name);
@@ -573,7 +577,7 @@ private:
     bool BeginUpdate();
     bool CommitUpdate();
     void AddTasksToDestinationList();
-    void AddCustomCategoriesToDestionationList();
+    void AddCustomCategoriesToDestinationList();
     void LoadKnownCategory(const wxString& title);
 
     wxTaskBarJumpList *m_jumpList;
@@ -1311,7 +1315,7 @@ void wxTaskBarJumpListImpl::Update()
         return;
 
     AddTasksToDestinationList();
-    AddCustomCategoriesToDestionationList();
+    AddCustomCategoriesToDestinationList();
     if ( m_recent_visible )
         m_destinationList->AppendKnownCategory(KDC_RECENT);
     if ( m_frequent_visible )
@@ -1446,7 +1450,7 @@ void wxTaskBarJumpListImpl::AddTasksToDestinationList()
     m_destinationList->AddUserTasks(collection);
 }
 
-void wxTaskBarJumpListImpl::AddCustomCategoriesToDestionationList()
+void wxTaskBarJumpListImpl::AddCustomCategoriesToDestinationList()
 {
     for ( wxTaskBarJumpListCategories::iterator it = m_customCategories.begin();
           it != m_customCategories.end();
@@ -1462,7 +1466,7 @@ void wxTaskBarJumpListImpl::AddCustomCategoriesToDestionationList()
               ++iter )
         {
             wxASSERT_MSG(
-                (*iter)->GetType() == wxTASKBAR_JUMP_LIST_DESTIONATION,
+                (*iter)->GetType() == wxTASKBAR_JUMP_LIST_DESTINATION,
                 "Invalid category item." );
             AddShellLink(collection, *(*iter));
         }

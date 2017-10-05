@@ -2678,7 +2678,10 @@ void wxAuiNotebook::OnTabEndDrag(wxAuiNotebookEvent& evt)
     wxPoint mouse_screen_pt = ::wxGetMousePosition();
     wxPoint mouse_client_pt = ScreenToClient(mouse_screen_pt);
 
-
+    // Update our selection (it may be updated again below but the code below
+    // can also return without doing anything else and this ensures that the
+    // selection is updated even then).
+    m_curPage = src_tabs->GetActivePage();
 
     // check for an external move
     if (m_flags & wxAUI_NB_TAB_EXTERNAL_MOVE)
@@ -2766,11 +2769,12 @@ void wxAuiNotebook::OnTabEndDrag(wxAuiNotebookEvent& evt)
                 nb->m_tabs.InsertPage(page_info.window, page_info, insert_idx);
 
                 nb->DoSizing();
+                dest_tabs->SetActivePage(insert_idx);
                 dest_tabs->DoShowHide();
                 dest_tabs->Refresh();
 
                 // set the selection in the destination tab control
-                nb->SetSelectionToPage(page_info);
+                nb->DoModifySelection(insert_idx, false);
 
                 // notify owner that the tab has been dragged
                 wxAuiNotebookEvent e2(wxEVT_AUINOTEBOOK_DRAG_DONE, m_windowId);
@@ -2801,8 +2805,10 @@ void wxAuiNotebook::OnTabEndDrag(wxAuiNotebookEvent& evt)
             dest_tabs = tab_frame->m_tabs;
 
             if (dest_tabs == src_tabs)
+            {
+                m_curPage = evt.GetSelection();
                 return;
-
+            }
 
             wxPoint pt = dest_tabs->ScreenToClient(mouse_screen_pt);
             wxWindow* target = NULL;

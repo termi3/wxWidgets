@@ -1,5 +1,4 @@
-
-Libpng 1.6.2 - April 25, 2013
+Libpng 1.6.28 - January 5, 2017
 
 This is a public release of libpng, intended for use in production codes.
 
@@ -8,37 +7,28 @@ Files available for download:
 Source files with LF line endings (for Unix/Linux) and with a
 "configure" script
 
-   libpng-1.6.2.tar.xz (LZMA-compressed, recommended)
-   libpng-1.6.2.tar.gz
+   libpng-1.6.28.tar.xz (LZMA-compressed, recommended)
+   libpng-1.6.28.tar.gz
 
 Source files with CRLF line endings (for Windows), without the
 "configure" script
 
-   lpng162.7z  (LZMA-compressed, recommended)
-   lpng162.zip
+   lpng1628.7z  (LZMA-compressed, recommended)
+   lpng1628.zip
 
 Other information:
 
-   libpng-1.6.2-README.txt
-   libpng-1.6.2-LICENSE.txt
+   libpng-1.6.28-README.txt
+   libpng-1.6.28-LICENSE.txt
+   libpng-1.6.28-*.asc (armored detached GPG signatures)
 
-Changes since the last public release (1.6.1):
-
-  Updated documentation of 1.5.x to 1.6.x changes in iCCP chunk handling.
-  Fixed incorrect warning of excess deflate data. End condition - the
-    warning would be produced if the end of the deflate stream wasn't read
-    in the last row.  The warning is harmless.
-  Corrected the test on user transform changes on read. It was in the
-    png_set of the transform function, but that doesn't matter unless the
-    transform function changes the rowbuf size, and that is only valid if
-    transform_info is called.
-  Corrected a misplaced closing bracket in contrib/libtests/pngvalid.c
-    (Flavio Medeiros).
-  Corrected length written to uncompressed iTXt chunks (Samuli Suominen).
-  Added contrib/tools/fixitxt.c, to repair the erroneous iTXt chunk length
-    written by libpng-1.6.0 and 1.6.1.
-  Disallow storing sRGB information when the sRGB is not supported.
-  Merge pngtest.c with libpng-1.7.0
+Changes since the last public release (1.6.27):
+  Fixed arm/aarch64 detection in CMakeLists.txt (Gianfranco Costamagna).
+  Added option to Cmake build allowing a custom location of zlib to be
+    specified in a scenario where libpng is being built as a subproject
+    alongside zlib by another project (Sam Serrels).
+  Changed png_ptr->options from a png_byte to png_uint_32, to accomodate
+    up to 16 options.
 
 Send comments/corrections/commendations to png-mng-implement at lists.sf.net
 (subscription required; visit

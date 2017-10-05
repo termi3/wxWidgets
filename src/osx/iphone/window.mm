@@ -58,7 +58,7 @@ CGRect wxOSXGetFrameForControl( wxWindowMac* window , const wxPoint& pos , const
 }
 
 
-@interface wxUIView(PossibleMethods)
+@interface UIView(PossibleMethods)
 - (void)setTitle:(NSString *)title forState:(UIControlState)state;
 
 - (void)drawRect: (CGRect) rect;
@@ -70,6 +70,9 @@ CGRect wxOSXGetFrameForControl( wxWindowMac* window , const wxPoint& pos , const
 
 - (BOOL) becomeFirstResponder;
 - (BOOL) resignFirstResponder;
+
+- (BOOL)isEnabled;
+- (void)setEnabled:(BOOL)flag;
 @end
 
 //
@@ -473,7 +476,7 @@ void  wxWidgetImpl::Convert( wxPoint *pt , wxWidgetImpl *from , wxWidgetImpl *to
 
 void wxWidgetIPhoneImpl::SetBackgroundColour( const wxColour &col )
 {
-    m_osxView.backgroundColor = [[UIColor alloc] initWithCGColor:col.GetCGColor()];
+    m_osxView.backgroundColor = [UIColor colorWithCGColor:col.GetCGColor()];
 }
 
 bool wxWidgetIPhoneImpl::SetBackgroundStyle(wxBackgroundStyle style) 

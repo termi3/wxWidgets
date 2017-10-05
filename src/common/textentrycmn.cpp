@@ -27,6 +27,7 @@
 #ifndef WX_PRECOMP
     #include "wx/window.h"
     #include "wx/dataobj.h"
+    #include "wx/textctrl.h"            // Only needed for wxTE_PASSWORD.
 #endif //WX_PRECOMP
 
 #include "wx/textentry.h"
@@ -50,7 +51,12 @@ public:
         win->Bind(wxEVT_TEXT, &wxTextEntryHintData::OnTextChanged, this);
     }
 
-    // default dtor is ok
+    ~wxTextEntryHintData()
+    {
+        m_win->Unbind(wxEVT_SET_FOCUS, &wxTextEntryHintData::OnSetFocus, this);
+        m_win->Unbind(wxEVT_KILL_FOCUS, &wxTextEntryHintData::OnKillFocus, this);
+        m_win->Unbind(wxEVT_TEXT, &wxTextEntryHintData::OnTextChanged, this);
+    }
 
     // Get the real text of the control such as it was before we replaced it
     // with the hint.
@@ -376,6 +382,11 @@ void wxTextEntryBase::ForceUpper()
 
 bool wxTextEntryBase::SetHint(const wxString& hint)
 {
+    // Hint contents would be shown hidden in a password text entry anyhow, so
+    // we just can't support hints in this case.
+    if ( GetEditableWindow()->HasFlag(wxTE_PASSWORD) )
+        return false;
+
     if ( !hint.empty() )
     {
         if ( !m_hintData )

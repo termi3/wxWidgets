@@ -87,6 +87,10 @@ public:
     // same as m_static but for m_alpha
     bool            m_staticAlpha;
 
+    // global and per-object flags determining LoadFile() behaviour
+    int             m_loadFlags;
+    static int      sm_defaultLoadFlags;
+
 #if wxUSE_PALETTE
     wxPalette       m_palette;
 #endif // wxUSE_PALETTE
@@ -96,6 +100,9 @@ public:
 
     wxDECLARE_NO_COPY_CLASS(wxImageRefData);
 };
+
+// For compatibility, if nothing else, loading is verbose by default.
+int wxImageRefData::sm_defaultLoadFlags = wxImage::Load_Verbose;
 
 wxImageRefData::wxImageRefData()
 {
@@ -113,6 +120,8 @@ wxImageRefData::wxImageRefData()
     m_ok = false;
     m_static =
     m_staticAlpha = false;
+
+    m_loadFlags = sm_defaultLoadFlags;
 }
 
 wxImageRefData::~wxImageRefData()
@@ -567,20 +576,33 @@ inline int BoxBetween(int value, int low, int high)
 void ResampleBoxPrecalc(wxVector<BoxPrecalc>& boxes, int oldDim)
 {
     const int newDim = boxes.size();
-    const double scale_factor_1 = double(oldDim) / newDim;
-    const int scale_factor_2 = (int)(scale_factor_1 / 2);
-
-    for ( int dst = 0; dst < newDim; ++dst )
+    wxASSERT( oldDim > 0 && newDim > 0 );
+    if ( newDim > 1 )
     {
-        // Source pixel in the Y direction
-        const int src_p = int(dst * scale_factor_1);
+        // We want to map pixels in the range [0..newDim-1]
+        // to the range [0..oldDim-1]
+        const double scale_factor_1 = double(oldDim-1) / (newDim-1);
+        const int scale_factor_2 = (int)(scale_factor_1 / 2);
 
-        BoxPrecalc& precalc = boxes[dst];
-        precalc.boxStart = BoxBetween(int(src_p - scale_factor_1/2.0 + 1),
-                                      0, oldDim - 1);
-        precalc.boxEnd = BoxBetween(wxMax(precalc.boxStart + 1,
-                                          int(src_p + scale_factor_2)),
-                                    0, oldDim - 1);
+        for ( int dst = 0; dst < newDim; ++dst )
+        {
+            // Source pixel in the Y direction
+            const int src_p = int(dst * scale_factor_1);
+
+            BoxPrecalc& precalc = boxes[dst];
+            precalc.boxStart = BoxBetween(int(src_p - scale_factor_1/2.0 + 1),
+                                          0, oldDim - 1);
+            precalc.boxEnd = BoxBetween(wxMax(precalc.boxStart + 1,
+                                              int(src_p + scale_factor_2)),
+                                        0, oldDim - 1);
+        }
+    }
+    else
+    {
+        // Let's take entire source image.
+        BoxPrecalc& precalc = boxes[0];
+        precalc.boxStart = 0;
+        precalc.boxEnd = oldDim - 1;
     }
 }
 
@@ -637,23 +659,48 @@ wxImage wxImage::ResampleBox(int width, int height) const
                     // Calculate the actual index in our source pixels
                     src_pixel_index = j * M_IMGDATA->m_width + i;
 
-                    sum_r += src_data[src_pixel_index * 3 + 0];
-                    sum_g += src_data[src_pixel_index * 3 + 1];
-                    sum_b += src_data[src_pixel_index * 3 + 2];
-                    if ( src_alpha )
+                    if (src_alpha)
+                    {
+                        sum_r += src_data[src_pixel_index * 3 + 0] * src_alpha[src_pixel_index];
+                        sum_g += src_data[src_pixel_index * 3 + 1] * src_alpha[src_pixel_index];
+                        sum_b += src_data[src_pixel_index * 3 + 2] * src_alpha[src_pixel_index];
                         sum_a += src_alpha[src_pixel_index];
+                    }
+                    else
+                    {
+                        sum_r += src_data[src_pixel_index * 3 + 0];
+                        sum_g += src_data[src_pixel_index * 3 + 1];
+                        sum_b += src_data[src_pixel_index * 3 + 2];
+                    }
 
                     averaged_pixels++;
                 }
             }
 
             // Calculate the average from the sum and number of averaged pixels
-            dst_data[0] = (unsigned char)(sum_r / averaged_pixels);
-            dst_data[1] = (unsigned char)(sum_g / averaged_pixels);
-            dst_data[2] = (unsigned char)(sum_b / averaged_pixels);
-            dst_data += 3;
-            if ( src_alpha )
+            if (src_alpha)
+            {
+                if (sum_a)
+                {
+                    dst_data[0] = (unsigned char)(sum_r / sum_a);
+                    dst_data[1] = (unsigned char)(sum_g / sum_a);
+                    dst_data[2] = (unsigned char)(sum_b / sum_a);
+                }
+                else
+                {
+                    dst_data[0] = 0;
+                    dst_data[1] = 0;
+                    dst_data[2] = 0;
+                }
                 *dst_alpha++ = (unsigned char)(sum_a / averaged_pixels);
+            }
+            else
+            {
+                dst_data[0] = (unsigned char)(sum_r / averaged_pixels);
+                dst_data[1] = (unsigned char)(sum_g / averaged_pixels);
+                dst_data[2] = (unsigned char)(sum_b / averaged_pixels);
+            }
+            dst_data += 3;
         }
     }
 
@@ -671,33 +718,50 @@ struct BilinearPrecalc
     double dd1;
 };
 
+inline void DoCalc(BilinearPrecalc& precalc, double srcpix, int srcpixmax)
+{
+    int srcpix1 = int(srcpix);
+    int srcpix2 = srcpix1 == srcpixmax ? srcpix1 : srcpix1 + 1;
+
+    precalc.dd = srcpix - (int)srcpix;
+    precalc.dd1 = 1.0 - precalc.dd;
+    precalc.offset1 = srcpix1 < 0.0
+                        ? 0
+                        : srcpix1 > srcpixmax
+                            ? srcpixmax
+                            : (int)srcpix1;
+    precalc.offset2 = srcpix2 < 0.0
+                        ? 0
+                        : srcpix2 > srcpixmax
+                            ? srcpixmax
+                            : (int)srcpix2;
+}
+
 void ResampleBilinearPrecalc(wxVector<BilinearPrecalc>& precalcs, int oldDim)
 {
     const int newDim = precalcs.size();
-    const double scale_factor = double(oldDim) / newDim;
+    wxASSERT( oldDim > 0 && newDim > 0 );
     const int srcpixmax = oldDim - 1;
-
-    for ( int dsty = 0; dsty < newDim; dsty++ )
+    if ( newDim > 1 )
     {
-        // We need to calculate the source pixel to interpolate from - Y-axis
-        double srcpix = double(dsty) * scale_factor;
-        double srcpix1 = int(srcpix);
-        double srcpix2 = srcpix1 == srcpixmax ? srcpix1 : srcpix1 + 1.0;
+        // We want to map pixels in the range [0..newDim-1]
+        // to the range [0..oldDim-1]
+        const double scale_factor = double(oldDim-1) / (newDim-1);
 
-        BilinearPrecalc& precalc = precalcs[dsty];
+        for ( int dsty = 0; dsty < newDim; dsty++ )
+        {
+            // We need to calculate the source pixel to interpolate from - Y-axis
+            double srcpix = (double)dsty * scale_factor;
 
-        precalc.dd = srcpix - (int)srcpix;
-        precalc.dd1 = 1.0 - precalc.dd;
-        precalc.offset1 = srcpix1 < 0.0
-                            ? 0
-                            : srcpix1 > srcpixmax
-                                ? srcpixmax
-                                : (int)srcpix1;
-        precalc.offset2 = srcpix2 < 0.0
-                            ? 0
-                            : srcpix2 > srcpixmax
-                                ? srcpixmax
-                                : (int)srcpix2;
+            DoCalc(precalcs[dsty], srcpix, srcpixmax);
+        }
+    }
+    else
+    {
+        // Let's take the pixel from the center of the source image.
+        double srcpix = (double)srcpixmax / 2.0;
+
+        DoCalc(precalcs[0], srcpix, srcpixmax);
     }
 }
 
@@ -807,27 +871,47 @@ struct BicubicPrecalc
     int offset[4];
 };
 
+inline void DoCalc(BicubicPrecalc& precalc, double srcpixd, int oldDim)
+{
+    const double dd = srcpixd - static_cast<int>(srcpixd);
+
+    for ( int k = -1; k <= 2; k++ )
+    {
+        precalc.offset[k + 1] = srcpixd + k < 0.0
+            ? 0
+            : srcpixd + k >= oldDim
+                ? oldDim - 1
+                : static_cast<int>(srcpixd + k);
+
+        precalc.weight[k + 1] = spline_weight(k - dd);
+    }
+}
+
 void ResampleBicubicPrecalc(wxVector<BicubicPrecalc> &aWeight, int oldDim)
 {
     const int newDim = aWeight.size();
-    for ( int dstd = 0; dstd < newDim; dstd++ )
+    wxASSERT( oldDim > 0 && newDim > 0 );
+
+    if ( newDim > 1 )
     {
-        // We need to calculate the source pixel to interpolate from - Y-axis
-        const double srcpixd = static_cast<double>(dstd * oldDim) / newDim;
-        const double dd = srcpixd - static_cast<int>(srcpixd);
+        // We want to map pixels in the range [0..newDim-1]
+        // to the range [0..oldDim-1]
+        const double scale_factor = static_cast<double>(oldDim-1) / (newDim-1);
 
-        BicubicPrecalc &precalc = aWeight[dstd];
-
-        for ( int k = -1; k <= 2; k++ )
+        for ( int dstd = 0; dstd < newDim; dstd++ )
         {
-            precalc.offset[k + 1] = srcpixd + k < 0.0
-                ? 0
-                : srcpixd + k >= oldDim
-                    ? oldDim - 1
-                    : static_cast<int>(srcpixd + k);
+            // We need to calculate the source pixel to interpolate from - Y-axis
+            const double srcpixd = static_cast<double>(dstd) * scale_factor;
 
-            precalc.weight[k + 1] = spline_weight(k - dd);
+            DoCalc(aWeight[dstd], srcpixd, oldDim);
         }
+    }
+    else
+    {
+        // Let's take the pixel from the center of the source image.
+        const double srcpixd = static_cast<double>(oldDim - 1) / 2.0;
+
+        DoCalc(aWeight[0], srcpixd, oldDim);
     }
 }
 
@@ -921,23 +1005,48 @@ wxImage wxImage::ResampleBicubic(int width, int height) const
 
                     // Create a sum of all velues for each color channel
                     // adjusted for the pixel's calculated weight
-                    sum_r += src_data[src_pixel_index * 3 + 0] * pixel_weight;
-                    sum_g += src_data[src_pixel_index * 3 + 1] * pixel_weight;
-                    sum_b += src_data[src_pixel_index * 3 + 2] * pixel_weight;
                     if ( src_alpha )
-                        sum_a += src_alpha[src_pixel_index] * pixel_weight;
+                    {
+                        const unsigned char a = src_alpha[src_pixel_index];
+                        sum_r += src_data[src_pixel_index * 3 + 0] * pixel_weight * a;
+                        sum_g += src_data[src_pixel_index * 3 + 1] * pixel_weight * a;
+                        sum_b += src_data[src_pixel_index * 3 + 2] * pixel_weight * a;
+                        sum_a += a * pixel_weight;
+                    }
+                    else
+                    {
+                        sum_r += src_data[src_pixel_index * 3 + 0] * pixel_weight;
+                        sum_g += src_data[src_pixel_index * 3 + 1] * pixel_weight;
+                        sum_b += src_data[src_pixel_index * 3 + 2] * pixel_weight;
+                    }
                 }
             }
 
             // Put the data into the destination image.  The summed values are
             // of double data type and are rounded here for accuracy
-            dst_data[0] = (unsigned char)(sum_r + 0.5);
-            dst_data[1] = (unsigned char)(sum_g + 0.5);
-            dst_data[2] = (unsigned char)(sum_b + 0.5);
-            dst_data += 3;
-
             if ( src_alpha )
+            {
+                if ( sum_a )
+                {
+                     dst_data[0] = (unsigned char)(sum_r / sum_a + 0.5);
+                     dst_data[1] = (unsigned char)(sum_g / sum_a + 0.5);
+                     dst_data[2] = (unsigned char)(sum_b / sum_a + 0.5);
+                }
+                else
+                {
+                    dst_data[0] = 0;
+                    dst_data[1] = 0;
+                    dst_data[2] = 0;
+                }
                 *dst_alpha++ = (unsigned char)sum_a;
+            }
+            else
+            {
+                dst_data[0] = (unsigned char)(sum_r + 0.5);
+                dst_data[1] = (unsigned char)(sum_g + 0.5);
+                dst_data[2] = (unsigned char)(sum_b + 0.5);
+            }
+            dst_data += 3;
         }
     }
 
@@ -2341,6 +2450,30 @@ bool wxImage::HasOption(const wxString& name) const
 // image I/O
 // ----------------------------------------------------------------------------
 
+/* static */
+void wxImage::SetDefaultLoadFlags(int flags)
+{
+    wxImageRefData::sm_defaultLoadFlags = flags;
+}
+
+/* static */
+int wxImage::GetDefaultLoadFlags()
+{
+    return wxImageRefData::sm_defaultLoadFlags;
+}
+
+void wxImage::SetLoadFlags(int flags)
+{
+    AllocExclusive();
+
+    M_IMGDATA->m_loadFlags = flags;
+}
+
+int wxImage::GetLoadFlags() const
+{
+    return M_IMGDATA ? M_IMGDATA->m_loadFlags : wxImageRefData::sm_defaultLoadFlags;
+}
+
 // Under Windows we can load wxImage not only from files but also from
 // resources.
 #if defined(__WINDOWS__) && wxUSE_WXDIB && wxUSE_IMAGE
@@ -2629,7 +2762,8 @@ bool wxImage::DoLoad(wxImageHandler& handler, wxInputStream& stream, int index)
     if ( stream.IsSeekable() )
         posOld = stream.TellI();
 
-    if ( !handler.LoadFile(this, stream, true/*verbose*/, index) )
+    if ( !handler.LoadFile(this, stream,
+                           (M_IMGDATA->m_loadFlags & Load_Verbose) != 0, index) )
     {
         if ( posOld != wxInvalidOffset )
             stream.SeekI(posOld);

@@ -827,9 +827,6 @@ void FileNameTestCase::TestSymlinks()
 
     wxFileName tmpfn(wxFileName::DirName(tmpdir));
 
-    wxDateTime dtAccessTmp, dtModTmp, dtCreateTmp;
-    CPPUNIT_ASSERT(tmpfn.GetTimes(&dtAccessTmp, &dtModTmp, &dtCreateTmp));
-
     // Create a temporary directory
 #ifdef __VMS
     wxString name = tmpdir + ".filenametestXXXXXX]";
@@ -915,18 +912,6 @@ void FileNameTestCase::TestSymlinks()
         (
             "Getting times of a directory" + msg,
             linktodir.GetTimes(&dtAccess, &dtMod, &dtCreate)
-        );
-
-        // IsEqualTo() should be true only when dereferencing. Don't test each
-        // individually: accessing to create the link will have updated some
-        bool equal = dtCreate.IsEqualTo(dtCreateTmp) &&
-                     dtMod.IsEqualTo(dtModTmp) &&
-                     dtAccess.IsEqualTo(dtAccessTmp);
-        CPPUNIT_ASSERT_EQUAL_MESSAGE
-        (
-            "Comparing directory times" + msg,
-            deref,
-            equal
         );
 
         // Test (File|Dir)Exists()
@@ -1035,10 +1020,10 @@ void CreateShortcut(const wxString& pathFile, const wxString& pathLink)
    hr = sl->QueryInterface(IID_IPersistFile, (void **)&pf);
    CPPUNIT_ASSERT( SUCCEEDED(hr) );
 
-   hr = sl->SetPath(pathFile.wx_str());
+   hr = sl->SetPath(pathFile.t_str());
    CPPUNIT_ASSERT( SUCCEEDED(hr) );
 
-   hr = pf->Save(pathLink.wx_str(), TRUE);
+   hr = pf->Save(pathLink.wc_str(), TRUE);
    CPPUNIT_ASSERT( SUCCEEDED(hr) );
 }
 

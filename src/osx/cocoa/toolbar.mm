@@ -174,7 +174,13 @@ public:
 
     void UpdateLabel()
     {
-        wxString labelStr = wxStripMenuCodes(m_label);
+        // Use an empty string if we're not displaying text
+        wxString labelStr;
+        wxToolBar *tbar = (wxToolBar*) GetToolBar();
+        int style = (tbar ? tbar->GetWindowStyleFlag() : 0);
+        if ( (style & (wxTB_NOICONS | wxTB_TEXT)) != 0 )
+            labelStr = wxStripMenuCodes(m_label);
+
         wxCFStringRef l(labelStr, GetToolBarFontEncoding());
         wxCFStringRef sh( GetShortHelp(), GetToolBarFontEncoding() );
 #if wxOSX_USE_NATIVE_TOOLBAR
@@ -189,7 +195,31 @@ public:
         }
 #endif
         if ( IsButton() )
-            [(NSButton*)m_controlHandle setTitle:l.AsNSString()];
+        {
+            NSButton* const btn = (NSButton*)m_controlHandle;
+
+            [btn setTitle:l.AsNSString()];
+
+            if ( style & wxTB_NOICONS )
+                [btn setImagePosition:NSNoImage];
+            else if ( style & wxTB_TEXT )
+                [btn setImagePosition:NSImageAbove];
+            else
+                [btn setImagePosition:NSImageOnly];
+
+            if ( (style & (wxTB_NOICONS | wxTB_TEXT)) != 0 )
+            {
+                [btn sizeToFit];
+            }
+            else if (tbar)
+            {
+                wxSize toolsize = tbar->GetToolSize();
+                NSRect frame = [m_controlHandle frame];
+                frame.size.width = toolsize.x;
+                frame.size.height = toolsize.y + 2;
+                [btn setFrame:frame];
+            }
+        }
 
         if ( m_controlHandle )
         {
@@ -338,10 +368,12 @@ private:
 
 - (id)initWithItemIdentifier: (NSString*) identifier
 {
-    self = [super initWithItemIdentifier:identifier];
-    impl = NULL;
-    [self setTarget: self];
-    [self setAction: @selector(clickedAction:)];
+    if ( self = [super initWithItemIdentifier:identifier] )
+    {
+        impl = NULL;
+        [self setTarget: self];
+        [self setAction: @selector(clickedAction:)];
+    }
     return self;
 }
 
@@ -376,8 +408,11 @@ private:
 
 - (id)init
 {
-    m_isSelectable = false;
-    return [super init];
+    if ( self = [super init] )
+    {
+        m_isSelectable = false;
+    }
+    return self;
 }
 
 - (void)setSelectable:(bool) value
@@ -439,8 +474,7 @@ private:
 
 - (id)initWithIdentifier:(NSString *)identifier
 {
-    self = [super initWithIdentifier:identifier];
-    if (self)
+    if (self = [super initWithIdentifier:identifier])
     {
         toolbarDelegate = [[wxNSToolbarDelegate alloc] init];
         [self setDelegate:toolbarDelegate];
@@ -462,10 +496,12 @@ private:
 
 - (id)initWithFrame:(NSRect)frame
 {
-    self = [super initWithFrame:frame];
-    impl = NULL;
-    [self setTarget: self];
-    [self setAction: @selector(clickedAction:)];
+    if ( self = [super initWithFrame:frame] )
+    {
+        impl = NULL;
+        [self setTarget: self];
+        [self setAction: @selector(clickedAction:)];
+    }
     return self;
 }
 
@@ -572,7 +608,7 @@ void wxToolBarTool::UpdateImages()
 
         dc.SelectObject(m_alternateBitmap);
         // This color corresponds to OS X Yosemite's rendering of selected toolbar items
-        // See also http://trac.wxwidgets.org/ticket/16645
+        // See also https://trac.wxwidgets.org/ticket/16645
         wxColour grey(0xB9, 0xB9, 0xB9);
         dc.SetPen(grey);
         dc.SetBrush(grey);
@@ -588,7 +624,11 @@ void wxToolBarTool::UpdateImages()
 void wxToolBarTool::UpdateToggleImage( bool toggle )
 {
 #if wxOSX_USE_NATIVE_TOOLBAR
-    if (m_toolbarItem != NULL )
+    // Avoid setting the image if we're not showing icons because the image may
+    // be invalid.
+    wxToolBar *tbar = (wxToolBar*) GetToolBar();
+    int style = tbar ? tbar->GetWindowStyleFlag() : 0;
+    if ( m_toolbarItem != NULL && !(style & wxTB_NOICONS) )
     {
         // the native toolbar item only has a 'selected' state (one for one toolbar)
         // so we emulate the toggle here
@@ -868,6 +908,21 @@ void wxToolBar::SetWindowStyleFlag( long style )
         [(NSToolbar*) m_macToolbar setDisplayMode:mode];
     }
 #endif
+
+    wxToolBarTool *tool;
+    wxToolBarToolsList::compatibility_iterator node = m_tools.GetFirst();
+    while ( node )
+    {
+        tool = (wxToolBarTool *) node->GetData();
+        if ( tool != NULL )
+        {
+            tool->UpdateLabel();
+        }
+
+        node = node->GetNext();
+    }
+
+    InvalidateBestSize();
 }
 
 #if wxOSX_USE_NATIVE_TOOLBAR
@@ -1405,7 +1460,7 @@ bool wxToolBar::DoInsertTool(size_t WXUNUSED(pos), wxToolBarToolBase *toolBase)
     
     wxSize toolSize = GetToolSize();
     WXWidget controlHandle = NULL;
-    NSRect toolrect = NSMakeRect(0, 0, toolSize.x, toolSize.y );
+    NSRect toolrect = NSMakeRect(0, 0, toolSize.x, toolSize.y + 2 );
 
 #if wxOSX_USE_NATIVE_TOOLBAR
     wxString label = tool->GetLabel();
@@ -1482,14 +1537,6 @@ bool wxToolBar::DoInsertTool(size_t WXUNUSED(pos), wxToolBarToolBase *toolBase)
                 if ( !(style & wxTB_NOICONS) )
                     tool->UpdateImages();
                 tool->UpdateLabel();
-
-                if ( style & wxTB_NOICONS )
-                    [v setImagePosition:NSNoImage];
-                else if ( style & wxTB_TEXT )
-                    [v setImagePosition:NSImageAbove];
-                else
-                    [v setImagePosition:NSImageOnly];
-                [v sizeToFit];
                 
 #if 0
                 InstallControlEventHandler(

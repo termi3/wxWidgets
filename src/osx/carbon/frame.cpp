@@ -30,7 +30,7 @@ wxBEGIN_EVENT_TABLE(wxFrame, wxFrameBase)
   EVT_SYS_COLOUR_CHANGED(wxFrame::OnSysColourChanged)
 wxEND_EVENT_TABLE()
 
-#define WX_MAC_STATUSBAR_HEIGHT 18
+#define WX_MAC_STATUSBAR_HEIGHT 24
 
 // ----------------------------------------------------------------------------
 // creation/destruction
@@ -205,6 +205,11 @@ void wxFrame::OnActivate(wxActivateEvent& event)
         }
 #endif
     }
+
+#if wxUSE_STATUSBAR
+    if ( GetStatusBar() && GetStatusBar()->IsShown() )
+        GetStatusBar()->Refresh();
+#endif
 }
 
 #if wxUSE_MENUS
@@ -215,9 +220,7 @@ void wxFrame::DetachMenuBar()
 
 void wxFrame::AttachMenuBar( wxMenuBar *menuBar )
 {
-#if wxOSX_USE_CARBON
-    wxFrame* tlf = wxDynamicCast( wxNonOwnedWindow::GetFromWXWindow( (WXWindow) FrontNonFloatingWindow() ) , wxFrame );
-#elif wxOSX_USE_COCOA
+#if wxOSX_USE_COCOA
     wxFrame* tlf = wxDynamicCast( wxNonOwnedWindow::GetFromWXWindow( wxOSXGetMainWindow() ) , wxFrame );
 #else
     wxFrame* tlf = wxDynamicCast( wxTheApp->GetTopWindow(), wxFrame );
@@ -414,4 +417,17 @@ void wxFrame::PositionBars()
 #endif
 }
 
+bool wxFrame::Show(bool show)
+{
+    if ( !show )
+    {
+#if wxUSE_MENUS
+        if (m_frameMenuBar != NULL)
+        {
+          m_frameMenuBar->MacUninstallMenuBar();
+        }
+#endif
+    }
+    return wxFrameBase::Show(show);
+}
 

@@ -407,10 +407,6 @@ bool wxDocument::OnSaveDocument(const wxString& file)
     Modify(false);
     SetFilename(file);
     SetDocumentSaved(true);
-#if defined( __WXOSX_MAC__ ) && wxOSX_USE_CARBON
-    wxFileName fn(file) ;
-    fn.MacSetDefaultTypeAndCreator() ;
-#endif
     return true;
 }
 
@@ -574,7 +570,9 @@ bool wxDocument::AddView(wxView *view)
 
 bool wxDocument::RemoveView(wxView *view)
 {
-    (void)m_documentViews.DeleteObject(view);
+    if ( !m_documentViews.DeleteObject(view) )
+        return false;
+
     OnChangedViewList();
     return true;
 }
@@ -1796,7 +1794,7 @@ wxDocTemplate *wxDocManager::SelectDocumentPath(wxDocTemplate **templates,
                          msgTitle,
                          wxOK | wxICON_EXCLAMATION | wxCENTRE);
 
-            path = wxEmptyString;
+            path.clear();
             return NULL;
         }
 

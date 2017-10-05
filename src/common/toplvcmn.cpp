@@ -105,10 +105,10 @@ bool wxTopLevelWindowBase::Destroy()
     // as we will be deleted anyhow during its destruction and the pointer
     // stored in wxPendingDelete would become invalid, so just delete ourselves
     // immediately in this case.
-    if ( wxWindow* parent = GetParent() )
+    wxWindow* parent = GetParent();
+    if ( (parent && parent->IsBeingDeleted()) || !GetHandle() )
     {
-        if ( parent->IsBeingDeleted() )
-            return wxNonOwnedWindow::Destroy();
+        return wxNonOwnedWindow::Destroy();
     }
 
     // delayed destruction: the frame will be deleted during the next idle
@@ -369,6 +369,22 @@ void wxTopLevelWindowBase::SetIcon(const wxIcon& icon)
 // ----------------------------------------------------------------------------
 // event handlers
 // ----------------------------------------------------------------------------
+
+bool wxTopLevelWindowBase::IsTopNavigationDomain(NavigationKind kind) const
+{
+    // This switch only exists to generate a compiler warning and force us to
+    // revisit this code if any new kinds of navigation are added in the
+    // future, but for now we block of them by default (some derived classes
+    // relax this however).
+    switch ( kind )
+    {
+        case Navigation_Tab:
+        case Navigation_Accel:
+            break;
+    }
+
+    return true;
+}
 
 // default resizing behaviour - if only ONE subwindow, resize to fill the
 // whole client area

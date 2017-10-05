@@ -19,6 +19,7 @@
 
 #if wxUSE_STDPATHS
 
+#include "wx/filename.h"
 #include "wx/stdpaths.h"
 #include "wx/osx/private.h"
 #include "wx/osx/core/cfstring.h"
@@ -37,7 +38,7 @@ static wxString GetFMDirectory(
                                            inDomain:domainMask
                                   appropriateForURL:nil
                                              create:NO error:nil];
-    return wxCFStringRef::AsString(url.path);
+    return wxCFStringRef::AsString((CFStringRef)url.path);
 }
 
 wxStandardPaths::wxStandardPaths()
@@ -52,7 +53,7 @@ wxStandardPaths::~wxStandardPaths()
 
 wxString wxStandardPaths::GetExecutablePath() const
 {
-    return wxCFStringRef::AsString([NSBundle mainBundle].executablePath);
+    return wxCFStringRef::AsString((CFStringRef)[NSBundle mainBundle].executablePath);
 }
 
 wxString wxStandardPaths::GetConfigDir() const
@@ -67,7 +68,7 @@ wxString wxStandardPaths::GetUserConfigDir() const
 
 wxString wxStandardPaths::GetDataDir() const
 {
-    return wxCFStringRef::AsString([NSBundle mainBundle].sharedSupportPath);
+    return wxCFStringRef::AsString((CFStringRef)[NSBundle mainBundle].sharedSupportPath);
 }
 
 wxString wxStandardPaths::GetLocalDataDir() const
@@ -82,12 +83,12 @@ wxString wxStandardPaths::GetUserDataDir() const
 
 wxString wxStandardPaths::GetPluginsDir() const
 {
-    return wxCFStringRef::AsString([NSBundle mainBundle].builtInPlugInsPath);
+    return wxCFStringRef::AsString((CFStringRef)[NSBundle mainBundle].builtInPlugInsPath);
 }
 
 wxString wxStandardPaths::GetResourcesDir() const
 {
-    return wxCFStringRef::AsString([NSBundle mainBundle].resourcePath);
+    return wxCFStringRef::AsString((CFStringRef)[NSBundle mainBundle].resourcePath);
 }
 
 wxString
@@ -103,6 +104,9 @@ wxString wxStandardPaths::GetUserDir(Dir userDir) const
     NSSearchPathDirectory dirType;
     switch (userDir)
     {
+        case Dir_Cache:
+            dirType = NSCachesDirectory;
+            break;
         case Dir_Desktop:
             dirType = NSDesktopDirectory;
             break;
@@ -124,6 +128,15 @@ wxString wxStandardPaths::GetUserDir(Dir userDir) const
     }
     
     return GetFMDirectory(dirType, NSUserDomainMask);
+}
+
+wxString
+wxStandardPaths::MakeConfigFileName(const wxString& basename,
+                                    ConfigFileConv WXUNUSED(conv)) const
+{
+    wxFileName fn(wxEmptyString, basename);
+    fn.SetName(fn.GetName() + wxT(" Preferences"));
+    return fn.GetFullName();
 }
 
 #endif // wxUSE_STDPATHS

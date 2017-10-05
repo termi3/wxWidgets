@@ -29,11 +29,7 @@
 wxIMPLEMENT_DYNAMIC_CLASS(wxBitmap, wxGDIObject);
 wxIMPLEMENT_DYNAMIC_CLASS(wxMask, wxObject);
 
-#if wxOSX_USE_CARBON
-#include "wx/osx/uma.h"
-#else
 #include "wx/osx/private.h"
-#endif
 
 CGColorSpaceRef wxMacGetGenericRGBColorSpace();
 CGDataProviderRef wxMacCGDataProviderCreateWithMemoryBuffer( const wxMemoryBuffer& buf );
@@ -499,11 +495,10 @@ IconRef wxBitmapRefData::GetIconRef()
         
         switch (sz)
         {
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
             case 1024:
                 dataType = kIconServices1024PixelDataARGB;
                 break;
-#endif
+
             case 512:
                 dataType = kIconServices512PixelDataARGB;
                 break;
@@ -844,93 +839,6 @@ bool wxBitmap::CopyFromIcon(const wxIcon& icon)
     int h = icon.GetHeight() ;
 
     Create( w , h ) ;
-#ifdef __WXOSX_CARBON__
-    if ( w == h && ( w == 16 || w == 32 || w == 48 || w == 128 ) )
-    {
-        IconFamilyHandle iconFamily = NULL ;
-        Handle imagehandle = NewHandle( 0 ) ;
-        Handle maskhandle = NewHandle( 0 ) ;
-
-        OSType maskType = 0;
-        OSType dataType = 0;
-        IconSelectorValue selector = 0 ;
-
-        switch (w)
-        {
-            case 128:
-                dataType = kThumbnail32BitData ;
-                maskType = kThumbnail8BitMask ;
-                selector = kSelectorAllAvailableData ;
-                break;
-
-            case 48:
-                dataType = kHuge32BitData ;
-                maskType = kHuge8BitMask ;
-                selector = kSelectorHuge32Bit | kSelectorHuge8BitMask ;
-                break;
-
-            case 32:
-                dataType = kLarge32BitData ;
-                maskType = kLarge8BitMask ;
-                selector = kSelectorLarge32Bit | kSelectorLarge8BitMask ;
-                break;
-
-            case 16:
-                dataType = kSmall32BitData ;
-                maskType = kSmall8BitMask ;
-                selector = kSelectorSmall32Bit | kSelectorSmall8BitMask ;
-                break;
-
-            default:
-                break;
-        }
-
-        OSStatus err = IconRefToIconFamily( MAC_WXHICON(icon.GetHICON()) , selector , &iconFamily ) ;
-
-        err = GetIconFamilyData( iconFamily , dataType , imagehandle ) ;
-        err = GetIconFamilyData( iconFamily , maskType , maskhandle ) ;
-        size_t imagehandlesize = GetHandleSize( imagehandle ) ;
-        size_t maskhandlesize = GetHandleSize( maskhandle ) ;
-
-        if ( imagehandlesize != 0 && maskhandlesize != 0 )
-        {
-            wxASSERT( GetHandleSize( imagehandle ) == w * 4 * h ) ;
-            wxASSERT( GetHandleSize( maskhandle ) == w * h ) ;
-
-            UseAlpha() ;
-
-            unsigned char *source = (unsigned char *) *imagehandle ;
-            unsigned char *sourcemask = (unsigned char *) *maskhandle ;
-            unsigned char* destination = (unsigned char*) BeginRawAccess() ;
-
-            for ( int y = 0 ; y < h ; ++y )
-            {
-                for ( int x = 0 ; x < w ; ++x )
-                {
-                    unsigned char a = *sourcemask++;
-                    *destination++ = a;
-                    source++ ;
-#if wxOSX_USE_PREMULTIPLIED_ALPHA
-                    *destination++ = ( (*source++) * a + 127 ) / 255;
-                    *destination++ = ( (*source++) * a + 127 ) / 255;
-                    *destination++ = ( (*source++) * a + 127 ) / 255;
-#else
-                    *destination++ = *source++ ;
-                    *destination++ = *source++ ;
-                    *destination++ = *source++ ;
-#endif
-                }
-            }
-
-            EndRawAccess() ;
-            DisposeHandle( imagehandle ) ;
-            DisposeHandle( maskhandle ) ;
-            created = true ;
-        }
-
-        DisposeHandle( (Handle) iconFamily ) ;
-    }
-#endif
     if ( !created )
     {
         wxMemoryDC dc ;
@@ -1065,7 +973,7 @@ IconRef wxBitmap::GetIconRef() const
 IconRef wxBitmap::CreateIconRef() const
 {
     IconRef icon = GetIconRef();
-    verify_noerr( AcquireIconRef(icon) );
+    __Verify_noErr(AcquireIconRef(icon));
     return icon;
 }
 #endif
@@ -1304,7 +1212,9 @@ wxBitmap::wxBitmap(const wxImage& image, int depth, double scale)
     // width and height of the device-dependent bitmap
     int width = image.GetWidth();
     int height = image.GetHeight();
-
+    // we always use 32 bit internally here
+    depth = 32;
+    
     wxBitmapRefData* bitmapRefData;
 
     m_refData = bitmapRefData = new wxBitmapRefData( width/scale, height/scale, depth, scale) ;
@@ -1959,9 +1869,9 @@ void wxBitmap::UngetRawData(wxPixelDataBase& WXUNUSED(dataBase))
     EndRawAccess() ;
 }
 
-void wxBitmap::UseAlpha()
+void wxBitmap::UseAlpha(bool use )
 {
     // remember that we are using alpha channel:
     // we'll need to create a proper mask in UngetRawData()
-    M_BITMAPDATA->UseAlpha( true );
+    M_BITMAPDATA->UseAlpha( use );
 }

@@ -42,7 +42,7 @@
 #endif // wxUSE_RIBBON
 
 #if wxUSE_AUI
-    #include "wx/xrc/xh_auinotbk.h"
+    #include "wx/xrc/xh_aui.h"
     #include "wx/xrc/xh_auitoolb.h"
 #endif // wxUSE_AUI
 
@@ -75,8 +75,12 @@ bool MyApp::OnInit()
     // load a handler for that image type. This example uses XPMs & a gif, but
     // if you want PNGs, then add a PNG handler, etc. See wxImage::AddHandler()
     // documentation for the types of image handlers available.
+#if wxUSE_XPM
     wxImage::AddHandler(new wxXPMHandler);
+#endif
+#if wxUSE_GIF
     wxImage::AddHandler(new wxGIFHandler);
+#endif
 
     // Initialize all the XRC handlers. Always required (unless you feel like
     // going through and initializing a handler of each control type you will
@@ -91,7 +95,7 @@ bool MyApp::OnInit()
 #endif
 
 #if wxUSE_AUI
-    wxXmlResource::Get()->AddHandler(new wxAuiNotebookXmlHandler);
+    wxXmlResource::Get()->AddHandler(new wxAuiXmlHandler);
     wxXmlResource::Get()->AddHandler(new wxAuiToolBarXmlHandler);
 #endif
 

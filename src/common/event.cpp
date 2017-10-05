@@ -824,13 +824,13 @@ bool wxKeyEvent::IsKeyInCategory(int category) const
             return (category & WXK_CATEGORY_ARROW) != 0;
 
         case WXK_PAGEDOWN:
-        case WXK_END:
+        case WXK_PAGEUP:
         case WXK_NUMPAD_PAGEUP:
         case WXK_NUMPAD_PAGEDOWN:
             return (category & WXK_CATEGORY_PAGING) != 0;
 
         case WXK_HOME:
-        case WXK_PAGEUP:
+        case WXK_END:
         case WXK_NUMPAD_HOME:
         case WXK_NUMPAD_END:
             return (category & WXK_CATEGORY_JUMP) != 0;
@@ -1604,69 +1604,78 @@ bool wxEvtHandler::SafelyProcessEvent(wxEvent& event)
     }
     catch ( ... )
     {
-        wxEventLoopBase * const loop = wxEventLoopBase::GetActive();
+        WXConsumeException();
+
+        return false;
+    }
+#endif // wxUSE_EXCEPTIONS
+}
+
+#if wxUSE_EXCEPTIONS
+/* static */
+void wxEvtHandler::WXConsumeException()
+{
+    wxEventLoopBase * const loop = wxEventLoopBase::GetActive();
+    try
+    {
+        if ( !wxTheApp || !wxTheApp->OnExceptionInMainLoop() )
+        {
+            if ( loop )
+                loop->Exit();
+        }
+        //else: continue running current event loop
+    }
+    catch ( ... )
+    {
+        // OnExceptionInMainLoop() threw, possibly rethrowing the same
+        // exception again. We have to deal with it here because we can't
+        // allow the exception to escape from the handling code, this will
+        // result in a crash at best (e.g. when using wxGTK as C++
+        // exceptions can't propagate through the C GTK+ code and corrupt
+        // the stack) and in something even more weird at worst (like
+        // exceptions completely disappearing into the void under some
+        // 64 bit versions of Windows).
+        if ( loop && !loop->IsYielding() )
+            loop->Exit();
+
+        // Give the application one last possibility to store the exception
+        // for rethrowing it later, when we get back to our code.
+        bool stored = false;
         try
         {
-            if ( !wxTheApp || !wxTheApp->OnExceptionInMainLoop() )
-            {
-                if ( loop )
-                    loop->Exit();
-            }
-            //else: continue running current event loop
+            if ( wxTheApp )
+                stored = wxTheApp->StoreCurrentException();
         }
         catch ( ... )
         {
-            // OnExceptionInMainLoop() threw, possibly rethrowing the same
-            // exception again. We have to deal with it here because we can't
-            // allow the exception to escape from the handling code, this will
-            // result in a crash at best (e.g. when using wxGTK as C++
-            // exceptions can't propagate through the C GTK+ code and corrupt
-            // the stack) and in something even more weird at worst (like
-            // exceptions completely disappearing into the void under some
-            // 64 bit versions of Windows).
-            if ( loop && !loop->IsYielding() )
-                loop->Exit();
+            // StoreCurrentException() really shouldn't throw, but if it
+            // did, take it as an indication that it didn't store it.
+        }
 
-            // Give the application one last possibility to store the exception
-            // for rethrowing it later, when we get back to our code.
-            bool stored = false;
+        // If it didn't take it, just abort, at least like this we behave
+        // consistently everywhere.
+        if ( !stored )
+        {
             try
             {
                 if ( wxTheApp )
-                    stored = wxTheApp->StoreCurrentException();
+                    wxTheApp->OnUnhandledException();
             }
             catch ( ... )
             {
-                // StoreCurrentException() really shouldn't throw, but if it
-                // did, take it as an indication that it didn't store it.
+                // And OnUnhandledException() absolutely shouldn't throw,
+                // but we still must account for the possibility that it
+                // did. At least show some information about the exception
+                // in this case.
+                wxTheApp->wxAppConsoleBase::OnUnhandledException();
             }
 
-            // If it didn't take it, just abort, at least like this we behave
-            // consistently everywhere.
-            if ( !stored )
-            {
-                try
-                {
-                    if ( wxTheApp )
-                        wxTheApp->OnUnhandledException();
-                }
-                catch ( ... )
-                {
-                    // And OnUnhandledException() absolutely shouldn't throw,
-                    // but we still must account for the possibility that it
-                    // did. At least show some information about the exception
-                    // in this case.
-                    wxTheApp->wxAppConsoleBase::OnUnhandledException();
-                }
-
-                wxAbort();
-            }
+            wxAbort();
         }
     }
-
-    return false;
-#endif // wxUSE_EXCEPTIONS
 }
+
+#endif // wxUSE_EXCEPTIONS
 
 bool wxEvtHandler::SearchEventTable(wxEventTable& table, wxEvent& event)
 {
@@ -1692,6 +1701,13 @@ void wxEvtHandler::DoBind(int id,
 {
     wxDynamicEventTableEntry *entry =
         new wxDynamicEventTableEntry(eventType, id, lastId, func, userData);
+
+    // Check if the derived class allows binding such event handlers.
+    if ( !OnDynamicBind(*entry) )
+    {
+        delete entry;
+        return;
+    }
 
     if (!m_dynamicEvents)
         m_dynamicEvents = new DynamicEvents;
@@ -1797,7 +1813,6 @@ bool wxEvtHandler::SearchDynamicEventTable( wxEvent& event )
 
     DynamicEvents& dynamicEvents = *m_dynamicEvents;
 
-    bool processed = false;
     bool needToPruneDeleted = false;
 
     // We can't use Get{First,Next}DynamicEntry() here as they hide the deleted
@@ -1824,8 +1839,20 @@ bool wxEvtHandler::SearchDynamicEventTable( wxEvent& event )
                handler = this;
             if ( ProcessEventIfMatchesId(*entry, handler, event) )
             {
-                processed = true;
-                break;
+                // It's important to skip pruning of the unbound event entries
+                // below because this object itself could have been deleted by
+                // the event handler making m_dynamicEvents a dangling pointer
+                // which can't be accessed any longer in the code below.
+                //
+                // In practice, it hopefully shouldn't be a problem to wait
+                // until we get an event that we don't handle before pruning
+                // because this should happen soon enough and even if it
+                // doesn't the worst possible outcome is slightly increased
+                // memory consumption while not skipping pruning can result in
+                // hard to reproduce (because they require the disconnection
+                // and deletion happen at the same time which is not always the
+                // case) crashes.
+                return true;
             }
         }
     }
@@ -1843,7 +1870,7 @@ bool wxEvtHandler::SearchDynamicEventTable( wxEvent& event )
         dynamicEvents.resize(nNew);
     }
 
-    return processed;
+    return false;
 }
 
 void wxEvtHandler::DoSetClientObject( wxClientData *data )

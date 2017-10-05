@@ -19,6 +19,7 @@
 #include <gtk/gtk.h>
 #include "wx/gtk/private.h"
 #include "wx/gtk/private/gtk2-compat.h"
+#include "wx/gtk/private/eventsdisabler.h"
 
 // ----------------------------------------------------------------------------
 // GTK callbacks
@@ -98,6 +99,15 @@ bool wxChoice::Create( wxWindow *parent, wxWindowID id,
 wxChoice::~wxChoice()
 {
     delete m_strings;
+
+ #ifdef __WXGTK3__
+    // At least with GTK+ 3.22.9, destroying a shown combobox widget results in
+    // a Gtk-CRITICAL debug message when the assertion fails inside a signal
+    // handler called from gtk_widget_unrealize(), which is annoying, so avoid
+    // it by hiding the widget before destroying it -- this doesn't look right,
+    // but shouldn't do any harm neither.
+    Hide();
+ #endif // __WXGTK3__
 }
 
 void wxChoice::GTKInsertComboBoxTextItem( unsigned int n, const wxString& text )
@@ -155,7 +165,7 @@ void wxChoice::DoClear()
 {
     wxCHECK_RET( m_widget != NULL, wxT("invalid control") );
 
-    GTKDisableEvents();
+    wxGtkEventsDisabler<wxChoice> noEvents(this);
 
     GtkComboBox* combobox = GTK_COMBO_BOX( m_widget );
     GtkTreeModel* model = gtk_combo_box_get_model( combobox );
@@ -165,8 +175,6 @@ void wxChoice::DoClear()
 
     if (m_strings)
         m_strings->Clear();
-
-    GTKEnableEvents();
 
     InvalidateBestSize();
 }
@@ -290,12 +298,10 @@ void wxChoice::SetSelection( int n )
 {
     wxCHECK_RET( m_widget != NULL, wxT("invalid control") );
 
-    GTKDisableEvents();
+    wxGtkEventsDisabler<wxChoice> noEvents(this);
 
     GtkComboBox* combobox = GTK_COMBO_BOX( m_widget );
     gtk_combo_box_set_active( combobox, n );
-
-    GTKEnableEvents();
 }
 
 void wxChoice::SetColumns(int n)

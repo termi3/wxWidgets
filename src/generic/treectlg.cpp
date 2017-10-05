@@ -37,6 +37,7 @@
 
 #include "wx/generic/treectlg.h"
 #include "wx/imaglist.h"
+#include "wx/itemattr.h"
 
 #include "wx/renderer.h"
 
@@ -223,7 +224,7 @@ public:
     {
         wxFont font;
 
-        wxTreeItemAttr * const attr = GetAttributes();
+        wxItemAttr * const attr = GetAttributes();
         if ( attr && attr->HasFont() )
             font = attr->GetFont();
         else if ( IsBold() )
@@ -282,19 +283,19 @@ public:
 
     // attributes
         // get them - may be NULL
-    wxTreeItemAttr *GetAttributes() const { return m_attr; }
+    wxItemAttr *GetAttributes() const { return m_attr; }
         // get them ensuring that the pointer is not NULL
-    wxTreeItemAttr& Attr()
+    wxItemAttr& Attr()
     {
         if ( !m_attr )
         {
-            m_attr = new wxTreeItemAttr;
+            m_attr = new wxItemAttr;
             m_ownsAttr = true;
         }
         return *m_attr;
     }
         // set them
-    void SetAttributes(wxTreeItemAttr *attr)
+    void SetAttributes(wxItemAttr *attr)
     {
         if ( m_ownsAttr ) delete m_attr;
         m_attr = attr;
@@ -303,7 +304,7 @@ public:
         m_widthText = -1;
     }
         // set them and delete when done
-    void AssignAttributes(wxTreeItemAttr *attr)
+    void AssignAttributes(wxItemAttr *attr)
     {
         SetAttributes(attr);
         m_ownsAttr = true;
@@ -335,7 +336,7 @@ private:
     wxArrayGenericTreeItems m_children; // list of children
     wxGenericTreeItem  *m_parent;       // parent of this item
 
-    wxTreeItemAttr     *m_attr;         // attributes???
+    wxItemAttr     *m_attr;         // attributes???
 
     // tree ctrl images for the normal, selected, expanded and
     // expanded+selected states
@@ -440,14 +441,6 @@ wxTreeTextCtrl::wxTreeTextCtrl(wxGenericTreeCtrl *owner,
     rect.y -= 2;
     rect.width  += 8;
     rect.height += 4;
-#elif defined(wxOSX_USE_CARBON) && wxOSX_USE_CARBON
-    int bestHeight = GetBestSize().y - 8;
-    if ( rect.height > bestHeight )
-    {
-        int diff = rect.height - bestHeight;
-        rect.height -= diff;
-        rect.y += diff / 2;
-    }
 #endif // platforms
 
     (void)Create(m_owner, wxID_ANY, m_startValue,
@@ -1096,7 +1089,7 @@ wxGenericTreeCtrl::GetChildrenCount(const wxTreeItemId& item,
     return ((wxGenericTreeItem*) item.m_pItem)->GetChildrenCount(recursively);
 }
 
-void wxGenericTreeCtrl::SetWindowStyle(const long styles)
+void wxGenericTreeCtrl::SetWindowStyleFlag(long styles)
 {
     // Do not try to expand the root node if it hasn't been created yet
     if (m_anchor && !HasFlag(wxTR_HIDE_ROOT) && (styles & wxTR_HIDE_ROOT))
@@ -2562,7 +2555,7 @@ void wxGenericTreeCtrl::PaintItem(wxGenericTreeItem *item, wxDC& dc)
     else
     {
         wxColour colBg;
-        wxTreeItemAttr * const attr = item->GetAttributes();
+        wxItemAttr * const attr = item->GetAttributes();
         if ( attr && attr->HasBackgroundColour() )
         {
             drawItemBackground =
@@ -2591,11 +2584,7 @@ void wxGenericTreeCtrl::PaintItem(wxGenericTreeItem *item, wxDC& dc)
         else
         {
             int flags = wxCONTROL_SELECTED;
-            if (m_hasFocus
-#if defined( __WXMAC__ ) && !defined(__WXUNIVERSAL__) && wxOSX_USE_CARBON // TODO CS
-                && IsControlActive( (ControlRef)GetHandle() )
-#endif
-            )
+            if (m_hasFocus)
                 flags |= wxCONTROL_FOCUSED;
             if ((item == m_current) && (m_hasFocus))
                 flags |= wxCONTROL_CURRENT;
@@ -2788,15 +2777,7 @@ wxGenericTreeCtrl::PaintLevel(wxGenericTreeItem *item,
             wxTRANSPARENT_PEN;
 
         wxColour colText;
-        if ( item->IsSelected()
-#if defined( __WXMAC__ ) && !defined(__WXUNIVERSAL__) && wxOSX_USE_CARBON // TODO CS
-            // On wxMac, if the tree doesn't have the focus we draw an empty
-            // rectangle, so we want to make sure that the text is visible
-            // against the normal background, not the highlightbackground, so
-            // don't use the highlight text colour unless we have the focus.
-             && m_hasFocus && IsControlActive( (ControlRef)GetHandle() )
-#endif
-            )
+        if ( item->IsSelected() )
         {
 #ifdef __WXMAC__
             colText = *wxWHITE;
@@ -2809,7 +2790,7 @@ wxGenericTreeCtrl::PaintLevel(wxGenericTreeItem *item,
         }
         else
         {
-            wxTreeItemAttr *attr = item->GetAttributes();
+            wxItemAttr *attr = item->GetAttributes();
             if (attr && attr->HasTextColour())
                 colText = attr->GetTextColour();
             else
@@ -4172,9 +4153,6 @@ wxSize wxGenericTreeCtrl::DoGetBestSize() const
     int dy = (size.y - borderSize.y) % PIXELS_PER_UNIT;
     if ( dy )
         size.y += PIXELS_PER_UNIT - dy;
-
-    // we need to update the cache too as the base class cached its own value
-    CacheBestSize(size);
 
     return size;
 }

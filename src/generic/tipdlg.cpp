@@ -78,7 +78,7 @@ class WXDLLIMPEXP_ADV wxRegTipProvider : public wxTipProvider
 public:
     wxRegTipProvider(const wxString& keyname);
 
-    virtual wxString GetTip();
+    virtual wxString GetTip() wxOVERRIDE;
 };
 
 // Empty implementation for now to keep the linker happy
@@ -164,7 +164,7 @@ wxString wxFileTipProvider::GetTip()
 
         // Break if tip isn't a comment, and isn't an empty string
         // (or only stray space characters).
-        if ( !tip.StartsWith(wxT("#")) && (tip.Trim() != wxEmptyString) )
+        if ( !tip.StartsWith(wxT("#")) && !tip.Trim().empty() )
         {
             break;
         }

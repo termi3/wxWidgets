@@ -23,6 +23,7 @@
 #include "wx/utils.h"
 #include "wx/frame.h"
 #include "wx/menuitem.h"
+#include "wx/dialog.h"
 #endif
 
 #include "wx/menu.h"
@@ -37,8 +38,10 @@
 
 - (id) initWithTitle:(NSString*) title
 {
-    self = [super initWithTitle:title];
-    impl = NULL;
+    if ( self = [super initWithTitle:title] )
+    {
+        impl = NULL;
+    }
     return self;
 }
 
@@ -235,20 +238,40 @@ public :
 
     virtual void PopUp( wxWindow *win, int x, int y ) wxOVERRIDE
     {
-        win->ScreenToClient( &x , &y ) ;
         NSView *view = win->GetPeer()->GetWXWidget();
-        NSRect frame = [view frame];
-        frame.origin.x = x;
-        frame.origin.y = y;
-        frame.size.width = 1;
-        frame.size.height = 1;
-        NSPopUpButtonCell *popUpButtonCell = [[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO];
-        [popUpButtonCell setAutoenablesItems:NO];
-        [popUpButtonCell setAltersStateOfSelectedItem:NO];
-        [popUpButtonCell setMenu:m_osxMenu];
-        [popUpButtonCell selectItem:nil];
-        [popUpButtonCell performClickWithFrame:frame inView:view];
-        [popUpButtonCell release];
+
+        wxPoint screenPoint(x,y);
+        NSPoint pointInView = wxToNSPoint(view, win->ScreenToClient( screenPoint ));
+
+        // action and validation methods are not called from macos for modal dialogs
+        // when using popUpMenuPositioningItem therefore we fall back to the older method
+        if ( wxDialog::OSXHasModalDialogsOpen() )
+        {
+            // we don't want plug-ins interfering
+            m_osxMenu.allowsContextMenuPlugIns = NO;
+            
+            wxTopLevelWindow* tlw = static_cast<wxTopLevelWindow*>(wxGetTopLevelParent(win));
+            NSWindow* nsWindow = tlw->GetWXWindow();
+            NSRect nsrect = NSZeroRect;
+            nsrect.origin = wxToNSPoint( NULL, screenPoint );
+            nsrect = [nsWindow convertRectFromScreen:nsrect];
+
+            NSEvent* rightClick = [NSEvent mouseEventWithType:NSRightMouseDown
+                                                     location:nsrect.origin
+                                                modifierFlags:0
+                                                    timestamp:0
+                                                 windowNumber:[nsWindow windowNumber]
+                                                      context:nil
+                                                  eventNumber:0
+                                                   clickCount:1
+                                                     pressure:0];
+            
+            [NSMenu popUpContextMenu:m_osxMenu withEvent:rightClick forView:view];
+        }
+        else
+        {
+            [m_osxMenu popUpMenuPositioningItem:nil atLocation:pointInView inView:view];
+        }
     }
     
     virtual void GetMenuBarDimensions(int &x, int &y, int &width, int &height) const wxOVERRIDE
@@ -258,6 +281,23 @@ public :
         x = r.origin.x;
         y = r.origin.y;
         width = r.size.width;
+    }
+    
+    void DisableAutoEnable()
+    {
+        [m_osxMenu setAutoenablesItems:NO];
+        
+        wxMenu* menu = GetWXPeer();
+        for ( auto item : menu->GetMenuItems() )
+        {
+            if ( item->IsSubMenu() )
+            {
+                wxMenuCocoaImpl* subimpl = dynamic_cast<wxMenuCocoaImpl*>(item->GetSubMenu()->GetPeer());
+                if ( subimpl )
+                    subimpl->DisableAutoEnable();
+            }
+        }
+
     }
     
     WXHMENU GetHMenu() wxOVERRIDE { return m_osxMenu; }

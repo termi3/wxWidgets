@@ -525,8 +525,6 @@ wxPrintNativeDataBase* wxOSXCreatePrintData()
 {
 #if wxOSX_USE_COCOA
     return new wxOSXCocoaPrintData();
-#elif wxOSX_USE_CARBON
-    return new wxOSXCarbonPrintData();
 #else
     return NULL;
 #endif
@@ -587,8 +585,7 @@ bool wxMacPrinter::Print(wxWindow *parent, wxPrintout *printout, bool prompt)
         return false;
     }
 
-    // on the mac we have always pixels as addressing mode with 72 dpi
-    printout->SetPPIScreen(72, 72);
+    printout->SetPPIScreen(wxGetDisplayPPI());
 
     PMResolution res;
     PMPrinter printer;
@@ -766,10 +763,9 @@ void wxMacPrintPreview::DetermineScaling(void)
     int screenWidth , screenHeight ;
     wxDisplaySize( &screenWidth , &screenHeight ) ;
 
-    wxSize ppiScreen( 72 , 72 ) ;
+    wxSize ppiScreen = wxGetDisplayPPI();
     wxSize ppiPrinter( 72 , 72 ) ;
 
-    // Note that with Leopard, screen dpi=72 is no longer a given
     m_previewPrintout->SetPPIScreen( ppiScreen.x , ppiScreen.y ) ;
 
     wxCoord w , h ;
@@ -811,36 +807,5 @@ void wxMacPrintPreview::DetermineScaling(void)
 //
 // end of print_osx.cpp
 //
-
-#if wxOSX_USE_CARBON
-
-wxIMPLEMENT_DYNAMIC_CLASS(wxOSXCarbonPrintData, wxOSXPrintData);
-
-wxOSXCarbonPrintData::wxOSXCarbonPrintData()
-{
-    if ( PMCreateSession( &m_macPrintSession ) == noErr )
-    {
-        if ( PMCreatePageFormat(&m_macPageFormat) == noErr )
-        {
-            PMSessionDefaultPageFormat(m_macPrintSession,
-                    m_macPageFormat);
-            PMGetPageFormatPaper(m_macPageFormat, &m_macPaper);
-        }
-
-        if ( PMCreatePrintSettings(&m_macPrintSettings) == noErr )
-        {
-            PMSessionDefaultPrintSettings(m_macPrintSession,
-                m_macPrintSettings);
-        }
-    }
-}
-
-wxOSXCarbonPrintData::~wxOSXCarbonPrintData()
-{
-    (void)PMRelease(m_macPageFormat);
-    (void)PMRelease(m_macPrintSettings);
-    (void)PMRelease(m_macPrintSession);
-}
-#endif
 
 #endif

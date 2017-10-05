@@ -626,8 +626,6 @@ public:
         @return
             @true if a suitable event handler function was found and executed,
             and the function did not call wxEvent::Skip.
-
-        @see SearchEventTable()
     */
     virtual bool ProcessEvent(wxEvent& event);
 
@@ -696,36 +694,6 @@ public:
         will be lost).
     */
     void DeletePendingEvents();
-
-    /**
-        Searches the event table, executing an event handler function if an appropriate
-        one is found.
-
-        @param table
-            Event table to be searched.
-        @param event
-            Event to be matched against an event table entry.
-
-        @return @true if a suitable event handler function was found and
-                 executed, and the function did not call wxEvent::Skip.
-
-        @remarks This function looks through the object's event table and tries
-                 to find an entry that will match the event.
-                 An entry will match if:
-                 @li The event type matches, and
-                 @li the identifier or identifier range matches, or the event table
-                     entry's identifier is zero.
-
-                 If a suitable function is called but calls wxEvent::Skip, this
-                 function will fail, and searching will continue.
-
-         @todo this function in the header is listed as an "implementation only" function;
-               are we sure we want to document it?
-
-        @see ProcessEvent()
-    */
-    virtual bool SearchEventTable(wxEventTable& table,
-                                  wxEvent& event);
 
     //@}
 
@@ -2931,7 +2899,7 @@ public:
     @class wxDropFilesEvent
 
     This class is used for drop files events, that is, when files have been dropped
-    onto the window. This functionality is currently only available under Windows.
+    onto the window.
 
     The window must have previously been enabled for dropping by calling
     wxWindow::DragAcceptFiles().
@@ -2945,12 +2913,13 @@ public:
         Process a @c wxEVT_DROP_FILES event.
     @endEventTable
 
-    @onlyfor{wxmsw}
+    @remarks Windows only until version 2.8.9, available on all platforms
+             since 2.8.10.
 
     @library{wxcore}
     @category{events}
 
-    @see @ref overview_events
+    @see @ref overview_events, wxWindow::DragAcceptFiles()
 */
 class wxDropFilesEvent : public wxEvent
 {

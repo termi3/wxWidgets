@@ -113,7 +113,7 @@ private:
     static std::string
     Message(size_t n, const wxString& msg)
     {
-        return std::string(wxString::Format("#%lu: %s", (unsigned long)n, msg));
+        return wxString::Format("#%lu: %s", (unsigned long)n, msg).ToStdString();
     }
 
     template <typename T>
@@ -364,6 +364,14 @@ void UnicodeTestCase::ConversionUTF8()
     CPPUNIT_ASSERT_EQUAL( 0, c.ToWChar(NULL, 0, u25a6, 0) );
     CPPUNIT_ASSERT_EQUAL( 1, c.ToWChar(NULL, 0, u25a6, 3) );
     CPPUNIT_ASSERT_EQUAL( 2, c.ToWChar(NULL, 0, u25a6, 4) );
+
+    // Verify that converting a string with embedded NULs works.
+    CPPUNIT_ASSERT_EQUAL( 5, wxString::FromUTF8("abc\0\x32", 5).length() );
+
+    // Verify that converting a string containing invalid UTF-8 does not work,
+    // even if it happens after an embedded NUL.
+    CPPUNIT_ASSERT( wxString::FromUTF8("abc\xff").empty() );
+    CPPUNIT_ASSERT( wxString::FromUTF8("abc\0\xff", 5).empty() );
 }
 
 void UnicodeTestCase::ConversionUTF16()
@@ -403,6 +411,19 @@ void UnicodeTestCase::ConversionUTF16()
     wxMBConvUTF16BE().cMB2WC("\xd8\x03\xdc\x01\0" /* OLD TURKIC LETTER YENISEI A */, wxNO_LEN, &len);
     CPPUNIT_ASSERT_EQUAL( 1, len );
 #endif // UTF-32 internal representation
+
+#if SIZEOF_WCHAR_T == 2
+    // Verify that the length of UTF-32 string is correct even when converting
+    // to it from a longer UTF-16 string with surrogates.
+
+    // Construct CAT FACE U+1F431 without using \U which is not supported by
+    // ancient compilers and without using \u with surrogates which is
+    // (correctly) flagged as an error by the newer ones.
+    wchar_t ws[2];
+    ws[0] = 0xd83d;
+    ws[1] = 0xdc31;
+    CPPUNIT_ASSERT_EQUAL( 4, wxMBConvUTF32BE().FromWChar(NULL, 0, ws, 2) );
+#endif // UTF-16 internal representation
 }
 
 void UnicodeTestCase::ConversionUTF32()

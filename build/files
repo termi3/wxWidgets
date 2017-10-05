@@ -69,6 +69,7 @@ BASE_UNIX_AND_DARWIN_NOTWXMAC_HDR =
 BASE_UNIX_SRC =
     $(BASE_UNIX_AND_DARWIN_NOTWXMAC_SRC)
     src/unix/fswatcher_inotify.cpp
+    src/unix/secretstore.cpp
     src/unix/stdpaths.cpp
 
 BASE_UNIX_HDR =
@@ -91,6 +92,7 @@ BASE_WIN32_SRC =
     src/msw/power.cpp
     src/msw/regconf.cpp
     src/msw/registry.cpp
+    src/msw/secretstore.cpp
     src/msw/snglinst.cpp
     src/msw/stackwalk.cpp
     src/msw/stdpaths.cpp
@@ -122,6 +124,7 @@ BASE_WIN32_HDR =
     wx/msw/stackwalk.h
     wx/msw/stdpaths.h
     wx/msw/winundef.h
+    wx/msw/winver.h
     wx/msw/wrapcctl.h
     wx/msw/wrapcdlg.h
     wx/msw/wrapwin.h
@@ -134,23 +137,27 @@ BASE_WIN32_HDR =
 BASE_COREFOUNDATION_SRC =
     src/osx/core/cfstring.cpp
     src/osx/core/evtloop_cf.cpp
+    src/osx/core/secretstore.cpp
     src/osx/core/strconv_cf.cpp
     src/osx/core/utilsexc_base.cpp
+    src/osx/cocoa/utils_base.mm
 
 BASE_COREFOUNDATION_HDR =
+    wx/osx/carbon/region.h
     wx/osx/core/cfdataref.h
     wx/osx/core/cfref.h
     wx/osx/core/cfstring.h
+    wx/osx/core/colour.h
     wx/osx/core/hid.h
     wx/osx/core/evtloop.h
     wx/osx/core/objcid.h
     wx/osx/core/private.h
-    wx/osx/core/stdpaths.h
 
 # Base files used by OS X ports (not Carbon)
 BASE_OSX_SHARED_SRC =
     src/osx/core/mimetype.cpp
     src/osx/fswatcher_fsevents.cpp
+    src/osx/cocoa/stdpaths.mm
     $(BASE_COREFOUNDATION_SRC)
     $(BASE_UNIX_AND_DARWIN_SRC)
 
@@ -160,16 +167,9 @@ BASE_OSX_SHARED_HDR =
     $(BASE_UNIX_AND_DARWIN_HDR)
 
 # Base and GUI files used by OS X
-BASE_AND_GUI_OSX_CARBON_SRC =
-    src/osx/carbon/utils.cpp
-    src/osx/carbon/uma.cpp
-    src/unix/stdpaths.cpp
-    src/osx/core/stdpaths_cf.cpp
-
 BASE_AND_GUI_OSX_COCOA_SRC =
     src/osx/cocoa/utils.mm
     src/osx/cocoa/power.mm
-    src/osx/cocoa/stdpaths.mm
 
 BASE_AND_GUI_OSX_IPHONE_SRC =
     src/osx/iphone/utils.mm
@@ -182,6 +182,205 @@ BASE_OSX_NOTWXMAC_SRC =
 BASE_OSX_NOTWXMAC_HDR =
     $(BASE_UNIX_AND_DARWIN_NOTWXMAC_HDR)
     $(BASE_COREFOUNDATION_HDR)
+
+
+## Qt
+
+QT_LOWLEVEL_HDR =
+    wx/qt/accel.h
+    wx/qt/app.h
+    wx/qt/apptbase.h
+    wx/qt/apptrait.h
+    wx/qt/bitmap.h
+    wx/qt/bmpbuttn.h
+    wx/qt/brush.h
+    wx/qt/anybutton.h
+    wx/qt/button.h
+    wx/qt/checkbox.h
+    wx/qt/checklst.h
+    wx/qt/choice.h
+    wx/qt/clipbrd.h
+    wx/qt/clrpicker.h
+    wx/qt/generic/clrpickerg.h
+    wx/generic/collpaneg.h
+    wx/qt/colordlg.h
+    wx/qt/colour.h
+    wx/qt/combobox.h
+    wx/qt/control.h
+    wx/qt/converter.h
+    wx/qt/ctrlsub.h
+    wx/qt/cursor.h
+    wx/qt/dataform.h
+    wx/qt/dataobj2.h
+    wx/qt/dataobj.h
+    wx/qt/dcclient.h
+    wx/qt/dc.h
+    wx/qt/dcmemory.h
+    wx/qt/dcprint.h
+    wx/qt/dcscreen.h
+    wx/qt/defs.h
+    wx/qt/dialog.h
+    wx/qt/dirdlg.h
+    wx/qt/dnd.h
+    wx/qt/evtloop.h
+    wx/qt/filedlg.h
+    wx/qt/font.h
+    wx/qt/fontdlg.h
+    wx/qt/frame.h
+    wx/qt/gauge.h
+    wx/generic/icon.h
+    wx/generic/imaglist.h
+    wx/qt/listbox.h
+    wx/qt/listctrl.h
+    wx/qt/mdi.h
+    wx/qt/menu.h
+    wx/qt/menuitem.h
+    wx/qt/minifram.h
+    wx/qt/msgdlg.h
+    wx/qt/notebook.h
+    wx/qt/palette.h
+    wx/qt/pen.h
+    wx/qt/popupwin.h
+    wx/qt/printdlg.h
+    wx/generic/prntdlgg.h
+    wx/qt/printqt.h
+    wx/qt/radiobox.h
+    wx/qt/radiobut.h
+    wx/qt/region.h
+    wx/qt/scrolbar.h
+    wx/qt/slider.h
+    wx/qt/spinbutt.h
+    wx/qt/spinctrl.h
+    wx/qt/statbmp.h
+    wx/qt/statbox.h
+    wx/qt/statline.h
+    wx/qt/statusbar.h
+    wx/qt/stattext.h
+    wx/qt/textctrl.h
+    wx/qt/textdlg.h
+    wx/qt/textentry.h
+    wx/qt/tglbtn.h
+    wx/qt/timer.h
+    wx/qt/toolbar.h
+    wx/qt/tooltip.h
+    wx/qt/toplevel.h
+    wx/qt/utils.h
+    wx/qt/window.h
+    wx/qt/private/winevent.h
+
+QT_LOWLEVEL_SRC=
+    src/qt/accel.cpp
+    src/qt/app.cpp
+    src/qt/apptraits.cpp
+    src/qt/bitmap.cpp
+    src/qt/bmpbuttn.cpp
+    src/qt/brush.cpp
+    src/qt/anybutton.cpp
+    src/qt/button.cpp
+    src/generic/caret.cpp
+    src/qt/checkbox.cpp
+    src/qt/checklst.cpp
+    src/qt/choice.cpp
+    src/qt/clipbrd.cpp
+    src/qt/clrpicker.cpp
+    src/generic/clrpickerg.cpp
+    src/generic/collpaneg.cpp
+    src/qt/colordlg.cpp
+    src/qt/colour.cpp
+    src/qt/combobox.cpp
+    src/qt/control.cpp
+    src/qt/converter.cpp
+    src/qt/ctrlsub.cpp
+    src/qt/cursor.cpp
+    src/qt/dataobj.cpp
+    src/qt/dcclient.cpp
+    src/qt/dc.cpp
+    src/qt/dcmemory.cpp
+    src/qt/dcprint.cpp
+    src/qt/dcscreen.cpp
+    src/qt/defs.cpp
+    src/qt/dialog.cpp
+    src/unix/dialup.cpp
+    src/qt/display.cpp
+    src/qt/dnd.cpp
+    src/qt/evtloop.cpp
+    src/generic/fdrepdlg.cpp
+    src/qt/filedlg.cpp
+    src/generic/filepickerg.cpp
+    src/qt/font.cpp
+    src/qt/fontdlg.cpp
+    src/qt/fontutil.cpp
+    src/qt/fontenum.cpp
+    src/generic/fontpickerg.cpp
+    src/qt/frame.cpp
+    src/qt/gauge.cpp
+    src/generic/icon.cpp
+    src/generic/imaglist.cpp
+    src/qt/listbox.cpp
+    src/qt/listctrl.cpp
+    src/qt/mdi.cpp
+    src/qt/menu.cpp
+    src/qt/menuitem.cpp
+    src/qt/minifram.cpp
+    src/qt/msgdlg.cpp
+    src/qt/notebook.cpp
+    src/qt/palette.cpp
+    src/qt/pen.cpp
+    src/qt/popupwin.cpp
+    src/qt/printdlg.cpp
+    src/generic/prntdlgg.cpp
+    src/qt/printqt.cpp
+    src/qt/radiobox.cpp
+    src/qt/radiobut.cpp
+    src/qt/region.cpp
+    src/qt/scrolbar.cpp
+    src/qt/settings.cpp
+    src/qt/sockqt.cpp
+    src/qt/slider.cpp
+    src/qt/spinbutt.cpp
+    src/qt/spinctrl.cpp
+    src/qt/statbmp.cpp
+    src/qt/statbox.cpp
+    src/qt/statline.cpp
+    src/qt/stattext.cpp
+    src/qt/statusbar.cpp
+    src/qt/textctrl.cpp
+    src/qt/textentry.cpp
+    src/generic/textmeasure.cpp
+    src/qt/tglbtn.cpp
+    src/qt/timer.cpp
+    src/qt/toolbar.cpp
+    src/qt/tooltip.cpp
+    src/qt/toplevel.cpp
+    src/qt/uiaction.cpp
+    src/qt/utils.cpp
+    src/qt/window.cpp
+
+ADVANCED_QT_HDR=
+    wx/generic/activityindicator.h
+    wx/generic/animate.h
+    wx/qt/calctrl.h
+    wx/qt/dataview.h
+    wx/qt/dvrenderer.h
+    wx/qt/dvrenderers.h
+    wx/qt/taskbar.h
+
+ADVANCED_QT_SRC=
+    src/generic/activityindicator.cpp
+    src/generic/animateg.cpp
+    src/qt/calctrl.cpp
+    src/qt/converter.cpp
+    src/qt/dataview.cpp
+    src/qt/dvrenderer.cpp
+    src/qt/dvrenderers.cpp
+    src/unix/joystick.cpp
+    src/unix/sound.cpp
+    src/qt/taskbar.cpp
+    src/common/taskbarcmn.cpp
+    src/qt/utils.cpp
+
+MEDIA_QT_SRC=
+    src/qt/mediactrl.cpp
 
 ## Common
 
@@ -238,6 +437,7 @@ BASE_CMN_SRC =
     src/common/powercmn.cpp
     src/common/process.cpp
     src/common/regex.cpp
+    src/common/secretstore.cpp
     src/common/stdpbase.cpp
     src/common/sstream.cpp
     src/common/stdstream.cpp
@@ -376,6 +576,7 @@ BASE_CMN_HDR =
     wx/scopedarray.h
     wx/scopedptr.h
     wx/scopeguard.h
+    wx/secretstore.h
     wx/sharedptr.h
     wx/snglinst.h
     wx/sstream.h
@@ -626,6 +827,7 @@ GUI_CMN_SRC =
     src/generic/buttonbar.cpp
     src/generic/choicdgg.cpp
     src/generic/choicbkg.cpp
+    src/generic/collheaderctrlg.cpp
     src/generic/combog.cpp
     src/generic/dcpsg.cpp
     src/generic/dirctrlg.cpp
@@ -698,6 +900,7 @@ GUI_CMN_HDR =
     wx/generic/accel.h
     wx/generic/buttonbar.h
     wx/generic/choicdgg.h
+    wx/generic/collheaderctrl.h
     wx/generic/combo.h
     wx/generic/custombgwin.h
     wx/generic/dcpsg.h
@@ -743,6 +946,7 @@ GUI_CMN_HDR =
     wx/palette.h
     wx/panel.h
     wx/pen.h
+    wx/peninfobase.h
     wx/position.h
     wx/preferences.h
     wx/radiobox.h
@@ -842,6 +1046,7 @@ GUI_CMN_HDR =
     wx/imagtga.h
     wx/imagtiff.h
     wx/imagxpm.h
+    wx/itemattr.h
     wx/listbase.h
     wx/listbook.h
     wx/listctrl.h
@@ -923,6 +1128,7 @@ GTK_WIN32_SRC =
     src/generic/caret.cpp
     src/generic/imaglist.cpp
     src/msw/ole/automtn.cpp
+    src/msw/ole/comimpl.cpp
     src/msw/ole/oleutils.cpp
     src/msw/ole/safearray.cpp
     src/msw/ole/uuid.cpp
@@ -936,6 +1142,7 @@ GTK_WIN32_HDR =
     wx/generic/caret.h
     wx/generic/imaglist.h
     wx/msw/ole/automtn.h
+    wx/msw/ole/comimpl.h
     wx/msw/ole/oleutils.h
     wx/msw/ole/safearray.h
     wx/msw/ole/uuid.h
@@ -961,6 +1168,7 @@ GTK_LOWLEVEL_SRC =
     src/gtk/filehistory.cpp
     src/gtk/font.cpp
     src/gtk/sockgtk.cpp
+    src/gtk/mimetype.cpp
     src/gtk/minifram.cpp
     src/gtk/nonownedwnd.cpp
     src/gtk/pen.cpp
@@ -1000,6 +1208,7 @@ GTK_LOWLEVEL_HDR =
     wx/gtk/evtloopsrc.h
     wx/gtk/font.h
     wx/gtk/filehistory.h
+    wx/gtk/mimetype.h
     wx/gtk/minifram.h
     wx/gtk/nonownedwnd.h
     wx/gtk/pen.h
@@ -1191,7 +1400,6 @@ GTK1_SRC =
     # Generic implementations used by wxGTK1:
     src/generic/accel.cpp
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/colrdlgg.cpp
     src/generic/dirdlgg.cpp
@@ -1356,7 +1564,6 @@ MOTIF_SRC =
     src/motif/xmcombo/xmcombo.c
     # Generic files used by wxMotif:
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/colrdlgg.cpp
     src/generic/dirdlgg.cpp
@@ -1543,6 +1750,7 @@ MSW_LOWLEVEL_SRC =
     src/msw/imaglist.cpp
     src/msw/minifram.cpp
     src/msw/nonownedwnd.cpp
+    src/msw/ole/comimpl.cpp
     src/msw/ole/dataobj.cpp
     src/msw/ole/dropsrc.cpp
     src/msw/ole/droptgt.cpp
@@ -1555,6 +1763,7 @@ MSW_LOWLEVEL_SRC =
     src/msw/printwin.cpp
     src/msw/region.cpp
     src/msw/renderer.cpp
+    src/msw/rt/utilsrt.cpp
     src/msw/settings.cpp
     src/msw/textmeasure.cpp
     src/msw/tooltip.cpp
@@ -1584,7 +1793,6 @@ MSW_DESKTOP_LOWLEVEL_HDR =
 
 MSW_SRC =
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/filepickerg.cpp
     src/generic/fontpickerg.cpp
@@ -1602,6 +1810,7 @@ MSW_SRC =
     src/msw/combo.cpp
     src/msw/combobox.cpp
     src/msw/control.cpp
+    src/msw/customdraw.cpp
     src/msw/dialog.cpp
     src/msw/dirdlg.cpp
     src/msw/dragimag.cpp
@@ -1623,7 +1832,6 @@ MSW_SRC =
     src/msw/notebook.cpp
     src/msw/ole/access.cpp
     src/msw/ownerdrw.cpp
-    src/msw/panel.cpp
     src/msw/progdlg.cpp
     src/msw/radiobox.cpp
     src/msw/radiobut.cpp
@@ -1646,7 +1854,6 @@ MSW_SRC =
     src/msw/treectrl.cpp
 MSW_HDR =
     wx/generic/clrpickerg.h
-    wx/generic/collheaderctrl.h
     wx/generic/collpaneg.h
     wx/generic/filepickerg.h
     wx/generic/fontpickerg.h
@@ -1703,6 +1910,7 @@ MSW_HDR =
     wx/msw/msvcrt.h
     wx/msw/notebook.h
     wx/msw/ole/access.h
+    wx/msw/ole/comimpl.h
     wx/msw/ole/dataform.h
     wx/msw/ole/dataobj.h
     wx/msw/ole/dataobj2.h
@@ -1723,6 +1931,7 @@ MSW_HDR =
     wx/msw/region.h
     wx/msw/rcdefs.h
     wx/msw/richmsgdlg.h
+    wx/msw/rt/utils.h
     wx/msw/scrolbar.h
     wx/msw/slider.h
     wx/msw/spinbutt.h
@@ -1879,7 +2088,7 @@ OSX_LOWLEVEL_SRC =
 
 OSX_LOWLEVEL_HDR =
 
-OSX_CARBON_COCOA_SRC =
+OSX_COMMON_SRC =
 <if cond="PLATFORM_MACOSX=='1'">
     # Common controls implementation
     src/osx/anybutton_osx.cpp
@@ -1922,7 +2131,6 @@ OSX_CARBON_COCOA_SRC =
     src/osx/carbon/gdiobj.cpp
     src/osx/carbon/icon.cpp
     src/osx/carbon/app.cpp
-    src/osx/carbon/combobox.cpp
     src/osx/carbon/control.cpp
     src/osx/carbon/dataobj.cpp
     src/osx/carbon/dcclient.cpp
@@ -1933,7 +2141,6 @@ OSX_CARBON_COCOA_SRC =
     src/osx/carbon/frame.cpp
     src/osx/carbon/mdi.cpp
     src/osx/carbon/metafile.cpp
-    src/osx/carbon/overlay.cpp
     src/osx/carbon/popupwin.cpp
     src/osx/carbon/renderer.cpp
     src/osx/carbon/statbrma.cpp
@@ -1943,7 +2150,6 @@ OSX_CARBON_COCOA_SRC =
     # Generic implementations used by wxOSX:
     src/generic/caret.cpp
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/colrdlgg.cpp
     src/generic/dirdlgg.cpp
@@ -2053,63 +2259,10 @@ OSX_SHARED_HDR =
     wx/generic/prntdlgg.h
     wx/generic/statusbr.h
 
-# wxOSX/Carbon
-
-OSX_CARBON_SRC =
-    # carbon files
-    $(OSX_CARBON_COCOA_SRC)
-    src/osx/carbon/anybutton.cpp
-    src/osx/carbon/bmpbuttn.cpp
-    src/osx/carbon/button.cpp
-    src/osx/carbon/checkbox.cpp
-    src/osx/carbon/choice.cpp
-    src/osx/carbon/colordlg.cpp
-    src/osx/carbon/dialog.cpp
-    src/osx/carbon/dirdlg.cpp
-    src/osx/carbon/dnd.cpp
-    src/osx/carbon/evtloop.cpp
-    src/osx/carbon/filedlg.cpp
-    src/osx/carbon/gauge.cpp
-    src/osx/carbon/listbox.cpp
-    src/osx/carbon/listctrl_mac.cpp
-    src/osx/carbon/menu.cpp
-    src/osx/carbon/menuitem.cpp
-    src/osx/carbon/msgdlg.cpp
-    src/osx/carbon/nonownedwnd.cpp
-    src/osx/carbon/notebmac.cpp
-    src/osx/carbon/printdlg.cpp
-    src/osx/carbon/radiobut.cpp
-    src/osx/carbon/scrolbar.cpp
-    src/osx/carbon/settings.cpp
-    src/osx/carbon/slider.cpp
-    src/osx/carbon/spinbutt.cpp
-    src/osx/carbon/srchctrl.cpp
-    src/osx/carbon/statbmp.cpp
-    src/osx/carbon/statbox.cpp
-    src/osx/carbon/statlmac.cpp
-    src/osx/carbon/stattext.cpp
-    src/osx/carbon/textctrl.cpp
-    src/osx/carbon/tglbtn.cpp
-    src/osx/carbon/toolbar.cpp
-    src/osx/carbon/tooltip.cpp
-    src/osx/carbon/window.cpp
-
-# wxMac Carbon header files
-OSX_CARBON_HDR =
-    # core files
-    wx/osx/core/colour.h
-    # carbon files
-    wx/osx/carbon/chkconf.h
-    wx/osx/carbon/evtloop.h
-    wx/osx/carbon/private.h
-    wx/osx/carbon/region.h
-    wx/osx/carbon/statbmp.h
-    wx/osx/carbon/uma.h
-
 # wxOSX/Cocoa
 
 OSX_COCOA_SRC =
-    $(OSX_CARBON_COCOA_SRC)
+    $(OSX_COMMON_SRC)
     src/osx/cocoa/anybutton.mm
     src/osx/cocoa/appprogress.mm
     src/osx/cocoa/button.mm
@@ -2131,6 +2284,7 @@ OSX_COCOA_SRC =
     src/osx/cocoa/nonownedwnd.mm
     src/osx/cocoa/notebook.mm
     src/osx/cocoa/radiobut.mm
+    src/osx/cocoa/overlay.mm
     src/osx/cocoa/preferences.mm
     src/osx/cocoa/printdlg.mm
     src/osx/cocoa/scrolbar.mm
@@ -2151,16 +2305,14 @@ OSX_COCOA_HDR =
     wx/osx/cocoa/evtloop.h
     wx/osx/cocoa/private.h
     wx/osx/cocoa/stdpaths.h
-    $(OSX_CARBON_HDR) # FIXME: these headers need moved somewhere shared...
     wx/generic/region.h
 
 # wxOSX/iPhone
 
 OSX_IPHONE_SRC =
-    $(OSX_CARBON_COCOA_SRC)
+    $(OSX_COMMON_SRC)
     src/generic/regiong.cpp
     src/generic/icon.cpp
-    src/osx/carbon/settings.cpp
     src/osx/cocoa/stdpaths.mm
     # iphone files
     src/osx/iphone/anybutton.mm
@@ -2172,6 +2324,7 @@ OSX_IPHONE_SRC =
     src/osx/iphone/msgdlg.mm
     src/osx/iphone/nonownedwnd.mm
     src/osx/iphone/scrolbar.mm
+    src/osx/iphone/settings.mm
     src/osx/iphone/slider.mm
     src/osx/iphone/stattext.mm
     src/osx/iphone/textctrl.mm
@@ -2183,198 +2336,7 @@ OSX_IPHONE_HDR =
     wx/osx/iphone/chkconf.h
     wx/osx/iphone/evtloop.h
     wx/osx/iphone/private.h
-    $(OSX_CARBON_HDR) # FIXME: these headers need moved somewhere shared...
     wx/generic/region.h
-
-# wxCocoa
-
-COCOA_LOWLEVEL_SRC =
-    # Shared wxMac and wxCocoa files
-    src/osx/core/hid.cpp
-    src/osx/core/utilsexc_cf.cpp
-COCOA_LOWLEVEL_HDR =
-COCOA_SRC =
-    src/cocoa/NSBox.mm
-    src/cocoa/NSButton.mm
-    src/cocoa/NSControl.mm
-    src/cocoa/NSMenu.mm
-    src/cocoa/NSPanel.mm
-    src/cocoa/NSScroller.mm
-    src/cocoa/NSSlider.mm
-    src/cocoa/NSTabView.mm
-    src/cocoa/NSTableView.mm
-    src/cocoa/NSTextField.mm
-    src/cocoa/NSView.mm
-    src/cocoa/NSWindow.mm
-    src/cocoa/ObjcRef.mm
-    src/cocoa/app.mm
-    src/cocoa/bitmap.mm
-    src/cocoa/bmpbuttn.mm
-    src/cocoa/brush.mm
-    src/cocoa/button.mm
-    src/cocoa/checkbox.mm
-    src/cocoa/checklst.mm
-    src/cocoa/choice.mm
-    src/cocoa/clipbrd.mm
-    src/cocoa/colordlg.mm
-    src/cocoa/colour.mm
-    src/cocoa/combobox.mm
-    src/cocoa/control.mm
-    src/cocoa/cursor.mm
-    src/cocoa/data.cpp
-    src/cocoa/dataobj.mm
-    src/cocoa/dc.mm
-    src/cocoa/dcclient.mm
-    src/cocoa/dcmemory.mm
-    src/cocoa/dcscreen.cpp
-    src/cocoa/dialog.mm
-    src/cocoa/dirdlg.mm
-    src/cocoa/display.mm
-    src/cocoa/drawer.mm
-    src/cocoa/evtloop.mm
-    src/cocoa/filedlg.mm
-    src/cocoa/font.mm
-    src/cocoa/fontdlg.mm
-    src/cocoa/fontenum.mm
-    src/cocoa/fontutil.cpp
-    src/cocoa/frame.mm
-    src/cocoa/gauge.mm
-    src/cocoa/icon.mm
-    src/cocoa/listbox.mm
-    src/cocoa/main.cpp
-    src/cocoa/mbarman.mm
-    src/cocoa/mdi.mm
-    src/cocoa/menu.mm
-    src/cocoa/menuitem.mm
-    src/cocoa/msgdlg.mm
-    src/cocoa/notebook.mm
-    src/cocoa/pen.mm
-    src/cocoa/radiobox.mm
-    src/cocoa/radiobut.mm
-    src/cocoa/region.mm
-    src/cocoa/scrolbar.mm
-    src/cocoa/settings.mm
-    src/cocoa/slider.mm
-    src/cocoa/sound.mm
-    src/cocoa/spinbutt.mm
-    src/cocoa/statbmp.mm
-    src/cocoa/statbox.mm
-    src/cocoa/statline2.mm
-    src/cocoa/stattext.mm
-    src/cocoa/textctrl.mm
-    src/cocoa/timer.mm
-    src/cocoa/toolbar.mm
-    src/cocoa/tooltip.mm
-    src/cocoa/toplevel.mm
-    src/cocoa/utils.mm
-    src/cocoa/utilsexc.mm
-    src/cocoa/window.mm
-    # Generic implementations used by wxCocoa:
-    src/generic/accel.cpp
-    src/generic/caret.cpp
-    src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
-    src/generic/collpaneg.cpp
-    src/generic/colrdlgg.cpp
-    src/generic/fdrepdlg.cpp
-    src/generic/filepickerg.cpp
-    src/generic/fontdlgg.cpp
-    src/generic/fontpickerg.cpp
-    src/generic/imaglist.cpp
-    src/generic/listctrl.cpp
-    src/generic/paletteg.cpp
-    src/generic/regiong.cpp
-    src/generic/statusbr.cpp
-    src/generic/textmeasure.cpp
-COCOA_HDR =
-    wx/cocoa/NSApplication.h
-    wx/cocoa/NSBox.h
-    wx/cocoa/NSButton.h
-    wx/cocoa/NSControl.h
-    wx/cocoa/NSMenu.h
-    wx/cocoa/NSPanel.h
-    wx/cocoa/NSScroller.h
-    wx/cocoa/NSSlider.h
-    wx/cocoa/NSTabView.h
-    wx/cocoa/NSTableView.h
-    wx/cocoa/NSTextField.h
-    wx/cocoa/NSView.h
-    wx/cocoa/NSWindow.h
-    wx/cocoa/ObjcAssociate.h
-    wx/cocoa/ObjcPose.h
-    wx/cocoa/ObjcRef.h
-    wx/cocoa/app.h
-    wx/cocoa/bitmap.h
-    wx/cocoa/bmpbuttn.h
-    wx/cocoa/brush.h
-    wx/cocoa/button.h
-    wx/cocoa/checkbox.h
-    wx/cocoa/checklst.h
-    wx/cocoa/choice.h
-    wx/cocoa/clipbrd.h
-    wx/cocoa/colordlg.h
-    wx/cocoa/colour.h
-    wx/cocoa/combobox.h
-    wx/cocoa/control.h
-    wx/cocoa/cursor.h
-    wx/cocoa/dataform.h
-    wx/cocoa/dataobj.h
-    wx/cocoa/dataobj2.h
-    wx/cocoa/dc.h
-    wx/cocoa/dcclient.h
-    wx/cocoa/dcmemory.h
-    wx/cocoa/dcscreen.h
-    wx/cocoa/dialog.h
-    wx/cocoa/dirdlg.h
-    wx/cocoa/drawer.h
-    wx/cocoa/evtloop.h
-    wx/cocoa/filedlg.h
-    wx/cocoa/font.h
-    wx/cocoa/fontdlg.h
-    wx/cocoa/frame.h
-    wx/cocoa/gauge.h
-    wx/cocoa/icon.h
-    wx/cocoa/listbox.h
-    wx/cocoa/log.h
-    wx/cocoa/mbarman.h
-    wx/cocoa/mdi.h
-    wx/cocoa/menu.h
-    wx/cocoa/menuitem.h
-    wx/cocoa/msgdlg.h
-    wx/cocoa/notebook.h
-    wx/cocoa/pen.h
-    wx/cocoa/radiobox.h
-    wx/cocoa/radiobut.h
-    wx/cocoa/region.h
-    wx/cocoa/scrolbar.h
-    wx/cocoa/slider.h
-    wx/cocoa/sound.h
-    wx/cocoa/spinbutt.h
-    wx/cocoa/statbmp.h
-    wx/cocoa/statbox.h
-    wx/cocoa/statline.h
-    wx/cocoa/stattext.h
-    wx/cocoa/textctrl.h
-    wx/cocoa/toolbar.h
-    wx/cocoa/tooltip.h
-    wx/cocoa/toplevel.h
-    wx/cocoa/window.h
-    # Semi-private headers
-    wx/cocoa/objc/objc_uniquifying.h
-    # Generic implementations used by wxCocoa:
-    wx/generic/caret.h
-    wx/generic/clrpickerg.h
-    wx/generic/collpaneg.h
-    wx/generic/fdrepdlg.h
-    wx/generic/fontdlgg.h
-    wx/generic/fontpickerg.h
-    wx/generic/imaglist.h
-    wx/generic/listctrl.h
-    wx/generic/paletteg.h
-    wx/generic/region.h
-    wx/generic/statusbr.h
-
-
 
 # wxUniversal
 
@@ -2387,8 +2349,8 @@ UNIV_THEMES_SRC =
 UNIV_SRC =
     $(UNIV_PLATFORM_SRC)
     src/generic/accel.cpp
+    src/generic/activityindicator.cpp
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/colrdlgg.cpp
     src/generic/dirdlgg.cpp
@@ -2508,6 +2470,7 @@ ADVANCED_CMN_SRC =
     src/common/datavcmn.cpp
     src/common/gridcmn.cpp
     src/common/hyperlnkcmn.cpp
+	src/common/notifmsgcmn.cpp
     src/common/odcombocmn.cpp
     src/common/richtooltipcmn.cpp
     src/generic/aboutdlgg.cpp
@@ -2590,20 +2553,21 @@ ADVANCED_CMN_HDR =
     wx/wizard.h
 
 ADVANCED_MSW_SRC =
+    src/generic/activityindicator.cpp
     src/common/taskbarcmn.cpp
     src/msw/aboutdlg.cpp
     src/msw/notifmsg.cpp
+    src/msw/rt/notifmsgrt.cpp
     src/msw/richtooltip.cpp
     src/msw/sound.cpp
     src/msw/taskbar.cpp
 ADVANCED_MSW_HDR =
-    wx/msw/notifmsg.h
+    wx/generic/activityindicator.h
     wx/msw/sound.h
     wx/msw/taskbar.h
 
 # not used with wxUniv
 ADVANCED_MSW_NATIVE_SRC =
-    src/generic/activityindicator.cpp
     src/generic/animateg.cpp
     src/msw/bmpcbox.cpp
     src/msw/calctrl.cpp
@@ -2614,7 +2578,6 @@ ADVANCED_MSW_NATIVE_SRC =
     src/msw/hyperlink.cpp
     src/msw/timectrl.cpp
 ADVANCED_MSW_NATIVE_HDR =
-    wx/generic/activityindicator.h
     wx/generic/animate.h
     wx/msw/bmpcbox.h
     wx/msw/commandlinkbutton.h
@@ -2630,32 +2593,6 @@ ADVANCED_MSW_DESKTOP_SRC =
 ADVANCED_MSW_DESKTOP_HDR =
     wx/msw/joystick.h
 
-ADVANCED_OSX_CARBON_SRC =
-    src/common/taskbarcmn.cpp
-    src/generic/activityindicator.cpp
-    src/generic/animateg.cpp
-    src/osx/carbon/aboutdlg.cpp
-    src/osx/carbon/drawer.cpp
-    src/osx/dataview_osx.cpp
-    src/osx/carbon/dataview.cpp
-    src/osx/sound_osx.cpp
-    src/osx/carbon/sound.cpp
-    src/osx/carbon/taskbar.cpp
-    src/osx/core/hidjoystick.cpp
-
-ADVANCED_OSX_CARBON_HDR =
-    wx/generic/activityindicator.h
-    wx/generic/animate.h
-    wx/osx/dataview.h
-    wx/osx/dvrenderer.h
-    wx/osx/dvrenderers.h
-    wx/osx/joystick.h
-    wx/osx/sound.h
-    wx/osx/taskbarosx.h
-    wx/osx/carbon/drawer.h
-    wx/osx/carbon/dataview.h
-    wx/osx/core/joystick.h
-
 ADVANCED_OSX_COCOA_SRC =
     src/common/taskbarcmn.cpp
     src/generic/animateg.cpp
@@ -2670,6 +2607,7 @@ ADVANCED_OSX_COCOA_SRC =
     src/osx/dataview_osx.cpp
     src/osx/cocoa/dataview.mm
     src/osx/cocoa/datetimectrl.mm
+    src/osx/cocoa/notifmsg.mm
     src/osx/cocoa/taskbar.mm
     src/osx/core/hidjoystick.cpp
 
@@ -2745,7 +2683,6 @@ ADVANCED_GTK2_SRC =
 ADVANCED_GTK_HDR =
     $(ADVANCED_GTK_PLATFORM_HDR)
     wx/generic/activityindicator.h
-    wx/gtk/notifmsg.h
     wx/gtk/taskbar.h
 ADVANCED_GTK2_HDR =
     $(ADVANCED_GTK_HDR)
@@ -2795,10 +2732,6 @@ MEDIA_MSW_HDR =
 MEDIA_MSW_DESKTOP_SRC =
 MEDIA_MSW_DESKTOP_HDR =
 
-MEDIA_OSX_CARBON_SRC =
-    src/osx/carbon/mediactrl.cpp
-MEDIA_OSX_CARBON_HDR =
-
 MEDIA_OSX_COCOA_SRC =
     src/osx/cocoa/mediactrl.mm
 MEDIA_OSX_COCOA_HDR =
@@ -2813,6 +2746,7 @@ MEDIA_COCOA_HDR =
 
 MEDIA_UNIX_SRC =
     src/unix/mediactrl.cpp
+    src/unix/mediactrl_gstplayer.cpp
 MEDIA_UNIX_HDR =
 
 MEDIA_GTK_SRC =
@@ -3074,7 +3008,7 @@ AUI_CMN_SRC =
     src/aui/auibar.cpp
     src/aui/tabmdi.cpp
     src/aui/tabart.cpp
-    src/xrc/xh_auinotbk.cpp
+    src/xrc/xh_aui.cpp
     src/xrc/xh_auitoolb.cpp
 AUI_CMN_HDR =
     wx/aui/framemanager.h
@@ -3085,13 +3019,15 @@ AUI_CMN_HDR =
     wx/aui/tabmdi.h
     wx/aui/aui.h
     wx/aui/tabart.h
-    wx/xrc/xh_auinotbk.h
+    wx/xrc/xh_aui.h
     wx/xrc/xh_auitoolb.h
 
 AUI_MSW_HDR =
     wx/aui/tabartmsw.h
+    wx/aui/barartmsw.h
 AUI_MSW_SRC =
     src/aui/tabartmsw.cpp
+    src/aui/barartmsw.cpp
 
 # wxRibbon
 

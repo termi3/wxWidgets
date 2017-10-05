@@ -36,8 +36,6 @@
 // trace mask for activation tracing messages
 #define TRACE_ACTIVATE "activation"
 
-wxWindow* g_MacLastWindow = NULL ;
-
 clock_t wxNonOwnedWindow::s_lastFlush = 0;
 
 // unified title and toolbar constant - not in Tiger headers, so we duplicate it here
@@ -232,14 +230,6 @@ bool wxNonOwnedWindow::OSXShowWithEffect(bool show,
                                          wxShowEffect effect,
                                          unsigned timeout)
 {
-    // Cocoa code needs to manage window visibility on its own and so calls
-    // wxWindow::Show() as needed but if we already changed the internal
-    // visibility flag here, Show() would do nothing, so avoid doing it
-#if wxOSX_USE_CARBON
-    if ( !wxWindow::Show(show) )
-        return false;
-#endif // Carbon
-
     if ( effect == wxSHOW_EFFECT_NONE ||
             !m_nowpeer || !m_nowpeer->ShowWithEffect(show, effect, timeout) )
         return Show(show);

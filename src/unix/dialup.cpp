@@ -550,7 +550,6 @@ wxDialUpManagerImpl::NetConnection wxDialUpManagerImpl::CheckConnectAndPing()
 wxDialUpManagerImpl::NetConnection wxDialUpManagerImpl::CheckConnect()
 {
    // second method: try to connect to a well known host:
-   // This can be used under Win 9x, too!
    struct hostent     *hp;
    struct sockaddr_in  serv_addr;
 
@@ -560,6 +559,7 @@ wxDialUpManagerImpl::NetConnection wxDialUpManagerImpl::CheckConnect()
    serv_addr.sin_family = hp->h_addrtype;
    memcpy(&serv_addr.sin_addr,hp->h_addr, hp->h_length);
    serv_addr.sin_port = htons(m_BeaconPort);
+   memset(&serv_addr.sin_zero, 0, sizeof(serv_addr.sin_zero));
 
    int sockfd;
    if( ( sockfd = socket(hp->h_addrtype, SOCK_STREAM, 0)) < 0)

@@ -257,6 +257,10 @@ where x and y are integers. Either of the components (or both) may be "-1" to
 signify default value. As a shortcut, empty string is equivalent to "-1,-1"
 (= wxDefaultSize or wxDefaultPosition).
 
+Notice that the dialog unit suffix "d" applies to both @c x and @c y if it's
+specified and cannot be specified after the first component, but only at the
+end.
+
 Examples:
 @code
 42,-1
@@ -275,6 +279,17 @@ Similarly to @ref overview_xrcformat_type_size "sizes", dimensions are expressed
 as integers with optional "d" suffix. When "d" suffix is used, the integer
 preceding it is interpreted as dialog units in the parent window, otherwise
 it's a DPI-independent pixel value.
+
+
+@subsection overview_xrcformat_type_pair_ints Pair of integers
+
+This is similar to @ref overview_xrcformat_type_size size, but for values that
+are not expressed in pixels and so doesn't allow "d" suffix nor does any
+DPI-dependent scaling, i.e. the format is just
+
+  size := x "," y
+
+and @c x and @c y are just integers which are not interpreted in any way.
 
 
 @subsection overview_xrcformat_type_text Text
@@ -560,6 +575,96 @@ controls cannot have children.
 @endTable
 
 
+@subsubsection xrc_wxauimanager wxAuiManager
+
+Notice that wxAUI support in XRC is available in wxWidgets 3.1.1 and
+later only and you need to explicitly register its handler using
+@code
+    #include <wx/xrc/xh_aui.h>
+
+    AddHandler(new wxAuiXmlHandler);
+@endcode
+to use it.
+
+A wxAuiManager can have one or more child objects of the
+wxAuiPaneInfo class.
+wxAuiPaneInfo objects have the following properties:
+
+@beginTable
+@hdr3col{property, type, description}
+@row3col{caption, @ref overview_xrcformat_type_text,
+    Sets the caption of the pane.}
+@row3col{caption_visible, @ref overview_xrcformat_type_bool,
+    Indicates that a pane caption should be visible.}
+@row3col{close_button, @ref overview_xrcformat_type_bool,
+    Indicates that a close button should be drawn for the pane.}
+@row3col{maximize_button, @ref overview_xrcformat_type_bool,
+    Indicates that a maximize button should be drawn for the pane.}
+@row3col{minimize_button, @ref overview_xrcformat_type_bool,
+    Indicates that a minimize button should be drawn for the pane.}
+@row3col{pin_button, @ref overview_xrcformat_type_bool,
+    Indicates that a pin button should be drawn for the pane.}
+@row3col{gripper, @ref overview_xrcformat_type_bool,
+    Indicates that a gripper should be drawn for the pane.}
+@row3col{pane_border, @ref overview_xrcformat_type_bool,
+    Indicates that a border should be drawn for the pane.}
+@row3col{dock, ,
+    Indicates that a pane should be docked.}
+@row3col{float, ,
+    Indicates that a pane should be floated.}
+@row3col{top_dockable, @ref overview_xrcformat_type_bool,
+    Indicates whether a pane can be docked at the top of the frame.}
+@row3col{bottom_dockable, @ref overview_xrcformat_type_bool,
+    Indicates whether a pane can be docked at the bottom of the frame.}
+@row3col{left_dockable, @ref overview_xrcformat_type_bool,
+    Indicates whether a pane can be docked on the left of the frame.}
+@row3col{right_dockable, @ref overview_xrcformat_type_bool,
+    Indicates whether a pane can be docked on the right of the frame.}
+@row3col{dock_fixed, @ref overview_xrcformat_type_bool,
+    Causes the containing dock to have no resize sash.}
+@row3col{resizable, @ref overview_xrcformat_type_bool,
+    Allows a pane to be resized if the parameter is @true, and forces it
+    to be a fixed size if the parameter is @false.}
+@row3col{movable, @ref overview_xrcformat_type_bool,
+    Indicates whether a pane can be moved.}
+@row3col{floatable, @ref overview_xrcformat_type_bool,
+    Sets whether the user will be able to undock a pane and turn it
+    into a floating window.}
+@row3col{best_size, @ref overview_xrcformat_type_size,
+    Sets the ideal size for the pane.}
+@row3col{floating_size, @ref overview_xrcformat_type_size,
+    Sets the size of the floating pane.}
+@row3col{min_size, @ref overview_xrcformat_type_size,
+    Sets the minimum size of the pane.}
+@row3col{max_size, @ref overview_xrcformat_type_size,
+    Sets the maximum size of the pane.}
+@row3col{default_pane, ,
+    Specifies that the pane should adopt the default pane settings.}
+@row3col{toolbar_pane, ,
+    Specifies that the pane should adopt the default toolbar pane settings.}
+@row3col{layer, , Determines the layer of the docked pane.}
+@row3col{row, , Determines the row of the docked pane.}
+@row3col{center_pane, ,
+    Specifies that the pane should adopt the default center pane settings.}
+@row3col{centre_pane, ,
+    Same as center_pane.}
+@row3col{direction, ,
+    Determines the direction of the docked pane.}
+@row3col{top, ,
+    Sets the pane dock position to the top of the frame.}
+@row3col{bottom, ,
+    Sets the pane dock position to the bottom side of the frame.}
+@row3col{left, ,
+    Sets the pane dock position to the left side of the frame.}
+@row3col{right, ,
+    Sets the pane dock position to the right side of the frame.}
+@row3col{center, ,
+    Sets the pane dock position to the center of the frame.}
+@row3col{centre, ,
+    Same as center.}
+@endTable
+
+
 @subsubsection xrc_wxauinotebook wxAuiNotebook
 
 A wxAuiNotebook can have one or more child objects of the @c notebookpage
@@ -592,14 +697,7 @@ Example:
 </object>
 @endcode
 
-Notice that wxAuiNotebook support in XRC is available in wxWidgets 2.9.5 and
-later only and you need to explicitly register its handler using
-@code
-    #include <wx/xrc/xh_auinotbk.h>
-
-    AddHandler(new wxAuiNotebookXmlHandler);
-@endcode
-to use it.
+@note See @ref xrc_wxauimanager about using wxAUI classes in XRC.
 
 @subsubsection xrc_wxauitoolbar wxAuiToolBar
 
@@ -1494,7 +1592,7 @@ can also have some optional XML @em attributes (not properties!):
 @beginTable
 @hdr3col{attribute, type, description}
 @row3col{tooltip, @ref overview_xrcformat_type_string,
-     Tooltip to show over this ratio button (default: none).}
+     Tooltip to show over this radio button (default: none).}
 @row3col{helptext, @ref overview_xrcformat_type_string,
      Contextual help for this radio button (default: none).}
 @row3col{enabled, @ref overview_xrcformat_type_bool,
@@ -1921,6 +2019,10 @@ No additional properties.
      Label to display on the button (default: empty).}
 @row3col{checked, @ref overview_xrcformat_type_bool,
      Should the button be checked/pressed initially (default: 0)?}
+@row3col{bitmap, @ref overview_xrcformat_type_bitmap,
+    Bitmap to display in the button (optional). @since 3.1.1}
+@row3col{bitmapposition, @c wxLEFT|wxRIGHT|wxTOP|wxBOTTOM,
+    Position of the bitmap in the button, see wxButton::SetBitmapPosition() (default: wxLEFT). @since 3.1.1}
 @endTable
 
 @subsubsection xrc_wxtoolbar wxToolBar
@@ -2229,11 +2331,11 @@ properties:
     (default: 0).}
 @row3col{minsize, @ref overview_xrcformat_type_size,
     Minimal size of this item (default: no min size).}
-@row3col{ratio, @ref overview_xrcformat_type_size,
+@row3col{ratio, @ref overview_xrcformat_type_pair_ints,
     Item ratio, see wxSizer::SetRatio() (default: no ratio).}
-@row3col{cellpos, @ref overview_xrcformat_type_pos,
+@row3col{cellpos, @ref overview_xrcformat_type_pair_ints,
     (wxGridBagSizer only) Position, see wxGBSizerItem::SetPos() (required). }
-@row3col{cellspan, @ref overview_xrcformat_type_size,
+@row3col{cellspan, @ref overview_xrcformat_type_pair_ints,
     (wxGridBagSizer only) Span, see wxGBSizerItem::SetSpan() (required). }
 @endTable
 
@@ -2458,7 +2560,7 @@ should be processed on. It is filtered out and ignored on any other platforms.
 Possible elemental values are:
 @beginDefList
 @itemdef{ @c win, Windows }
-@itemdef{ @c mac, Mac OS X (or Mac Classic in wxWidgets version supporting it) }
+@itemdef{ @c mac, OS X (or Mac Classic in wxWidgets version supporting it) }
 @itemdef{ @c unix, Any Unix platform @em except OS X }
 @endDefList
 
@@ -2466,7 +2568,7 @@ Examples:
 @code
 <label platform="win">Windows</label>
 <label platform="unix">Unix</label>
-<label platform="mac">Mac OS X</label>
+<label platform="mac">OS X</label>
 <help platform="mac|unix">Not a Windows machine</help>
 @endcode
 

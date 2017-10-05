@@ -837,15 +837,15 @@ wxString wxZipEntry::GetName(wxPathFormat format /*=wxPATH_NATIVE*/) const
     switch (wxFileName::GetFormat(format)) {
         case wxPATH_DOS:
         {
-            wxString name(isDir ? m_Name + wxT("\\") : m_Name);
-            for (size_t i = 0; i < name.length(); i++)
-                if (name[i] == wxT('/'))
-                    name[i] = wxT('\\');
+            wxString name(m_Name);
+            name.Replace(wxFILE_SEP_PATH_UNIX, wxFILE_SEP_PATH_DOS);
+            if (isDir)
+                name += wxFILE_SEP_PATH_DOS;
             return name;
         }
 
         case wxPATH_UNIX:
-            return isDir ? m_Name + wxT("/") : m_Name;
+            return isDir ? m_Name + wxFILE_SEP_PATH_UNIX : m_Name;
 
         default:
             ;
@@ -860,6 +860,18 @@ wxString wxZipEntry::GetName(wxPathFormat format /*=wxPATH_NATIVE*/) const
 
     return fn.GetFullPath(format);
 }
+
+namespace
+{
+
+// Accept both slashes and backslashes for compatibility as a lot of broken
+// programs create such archives even though the ZIP specification explicitly
+// says to use slashes (see 4.4.17.1).
+inline bool IsDOSPathSep(wxUniChar ch)
+{
+    return ch == wxFILE_SEP_PATH_DOS || ch == wxFILE_SEP_PATH_UNIX;
+}
+} // anonymous namespace
 
 // Static - Internally tars and zips use forward slashes for the path
 // separator, absolute paths aren't allowed, and directory names have a
@@ -877,18 +889,19 @@ wxString wxZipEntry::GetInternalName(const wxString& name,
     else
         internal = name;
 
-    bool isDir = !internal.empty() && internal.Last() == '/';
+    bool isDir = !internal.empty() && IsDOSPathSep(internal.Last());
     if (pIsDir)
         *pIsDir = isDir;
     if (isDir)
         internal.erase(internal.length() - 1);
 
-    while (!internal.empty() && *internal.begin() == '/')
+    while (!internal.empty() && IsDOSPathSep(*internal.begin()))
         internal.erase(0, 1);
-    while (!internal.empty() && internal.compare(0, 2, wxT("./")) == 0)
+    while (!internal.empty() &&
+            (internal[0] == wxS('.') && IsDOSPathSep(internal[1])))
         internal.erase(0, 2);
     if (internal == wxT(".") || internal == wxT(".."))
-        internal = wxEmptyString;
+        internal.clear();
 
     return internal;
 }
@@ -1020,7 +1033,8 @@ bool wxZipEntry::LoadExtraInfo(const char* extraData, wxUint16 extraLen, bool lo
     // seeking for the field with Header ID = 1.
     // (There is not stated in the documentation
     // that it should be the first one in the collection.)
-    while ( extraLen >= 4 )
+    const char* const extraDataEnd = extraData + extraLen;
+    while ( extraData + 4 <= extraDataEnd )
     {
         // Parse extra header
         wxZipHeader hds(extraData, 4);
@@ -1028,6 +1042,14 @@ bool wxZipEntry::LoadExtraInfo(const char* extraData, wxUint16 extraLen, bool lo
         wxUint16 fieldLen = hds.Read16();
         if ( fieldID == 1 )
         {
+            // Check that we don't overflow the input buffer.
+            if ( extraData + 4 + fieldLen > extraDataEnd )
+            {
+                wxLogWarning(_("Ignoring malformed extra data record, "
+                               "ZIP file may be corrupted"));
+                return false;
+            }
+
             // Data block for extra field with Header ID = 1 (ZIP64)
             // can have length up to 28 bytes.
             wxZipHeader ds(extraData+4, wxMin(fieldLen, 28));

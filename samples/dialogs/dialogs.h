@@ -301,12 +301,34 @@ private:
 
 
 #if USE_SETTINGS_DIALOG
+
+// Struct containing properties edited by SettingsDialog.
+struct SettingsData
+{
+    SettingsData() :
+        m_loadLastOnStartup(false),
+        m_autoSaveInterval(1),
+        m_showToolTips(false),
+        m_applyTo(0),
+        m_bgStyle(0),
+        m_titleFontSize(10)
+    {
+    }
+
+    bool m_loadLastOnStartup;
+    int m_autoSaveInterval;
+    bool m_showToolTips;
+    int m_applyTo;
+    int m_bgStyle;
+    int m_titleFontSize;
+};
+
 // Property sheet dialog
 class SettingsDialog: public wxPropertySheetDialog
 {
     wxDECLARE_CLASS(SettingsDialog);
 public:
-    SettingsDialog(wxWindow* parent, int dialogType);
+    SettingsDialog(wxWindow* parent, SettingsData& settingsData, int dialogType);
     ~SettingsDialog();
 
     wxPanel* CreateGeneralSettingsPage(wxWindow* parent);
@@ -326,6 +348,8 @@ protected:
     };
 
     wxImageList*    m_imageList;
+
+    SettingsData& m_settingsData;
 
     wxDECLARE_EVENT_TABLE();
 };
@@ -461,9 +485,7 @@ public:
 
     void OnRequestUserAttention(wxCommandEvent& event);
 #if wxUSE_NOTIFICATION_MESSAGE
-    void OnNotifMsgAuto(wxCommandEvent& event);
-    void OnNotifMsgShow(wxCommandEvent& event);
-    void OnNotifMsgHide(wxCommandEvent& event);
+    void OnNotifMsg(wxCommandEvent& event);
 #endif // wxUSE_NOTIFICATION_MESSAGE
 
 #if wxUSE_RICHTOOLTIP
@@ -493,10 +515,6 @@ private:
                         *m_dlgReplace;
 #endif // wxUSE_FINDREPLDLG
 
-#if wxUSE_NOTIFICATION_MESSAGE
-    wxNotificationMessage *m_notifMsg;
-#endif // wxUSE_NOTIFICATION_MESSAGE
-
     wxColourData m_clrData;
 
     // just a window which we use to show the effect of font/colours selection
@@ -508,6 +526,10 @@ private:
     wxInfoBar *m_infoBarSimple,
               *m_infoBarAdvanced;
 #endif // wxUSE_INFOBAR
+
+#if USE_SETTINGS_DIALOG
+    SettingsData m_settingsData;
+#endif // USE_SETTINGS_DIALOG
 
     wxDECLARE_EVENT_TABLE();
 };
@@ -584,9 +606,7 @@ enum
     DIALOGS_FIND,
     DIALOGS_REPLACE,
     DIALOGS_REQUEST,
-    DIALOGS_NOTIFY_AUTO,
-    DIALOGS_NOTIFY_SHOW,
-    DIALOGS_NOTIFY_HIDE,
+    DIALOGS_NOTIFY_MSG,
     DIALOGS_RICHTIP_DIALOG,
     DIALOGS_PROPERTY_SHEET,
     DIALOGS_PROPERTY_SHEET_TOOLBOOK,

@@ -290,11 +290,6 @@ enum wxBorder
  * should be passed to wxWindow::SetExtraStyle(), not SetWindowStyle())
  */
 
-/*  by default, TransferDataTo/FromWindow() only work on direct children of the */
-/*  window (compatible behaviour), set this flag to make them recursively */
-/*  descend into all subwindows */
-#define wxWS_EX_VALIDATE_RECURSIVELY    0x00000001
-
 /*  wxCommandEvents and the objects of the derived classes are forwarded to the */
 /*  parent window and so on recursively by default. Using this flag for the */
 /*  given window allows to block this propagation at this window, i.e. prevent */
@@ -916,13 +911,13 @@ enum wxKeyCode
     WXK_CLEAR,
     WXK_SHIFT,
     WXK_ALT,
-    /** Note that under Mac OS X, to improve compatibility with other
+    /** Note that under OS X, to improve compatibility with other
       * systems, 'WXK_CONTROL' represents the 'Command' key. Use this
       * constant to work with keyboard shortcuts. See 'WXK_RAW_CONTROL'
       * to get the state of the actual 'Control' key.
       */
     WXK_CONTROL,
-    /** Under Mac OS X, where the 'Command' key is mapped to 'Control'
+    /** Under OS X, where the 'Command' key is mapped to 'Control'
       * to improve compatibility with other systems, WXK_RAW_CONTROL may
       * be used to obtain the state of the actual 'Control' key
       * ('WXK_CONTROL' would obtain the status of the 'Command' key).
@@ -1020,7 +1015,7 @@ enum wxKeyCode
     WXK_WINDOWS_RIGHT,
     WXK_WINDOWS_MENU ,
     
-    /** This special key code was used to represent the key used for keyboard shortcuts. Under Mac OS X,
+    /** This special key code was used to represent the key used for keyboard shortcuts. Under OS X,
       * this key maps to the 'Command' (aka logo or 'Apple') key, whereas on Linux/Windows/others
       * this is the Control key, with the new semantic of WXK_CONTROL, WXK_COMMAND is not needed anymore
       */
@@ -1046,7 +1041,25 @@ enum wxKeyCode
     WXK_SPECIAL17,
     WXK_SPECIAL18,
     WXK_SPECIAL19,
-    WXK_SPECIAL20
+    WXK_SPECIAL20,
+
+    WXK_BROWSER_BACK = 501,
+    WXK_BROWSER_FORWARD,
+    WXK_BROWSER_REFRESH,
+    WXK_BROWSER_STOP,
+    WXK_BROWSER_SEARCH,
+    WXK_BROWSER_FAVORITES,
+    WXK_BROWSER_HOME,
+    WXK_VOLUME_MUTE,
+    WXK_VOLUME_DOWN,
+    WXK_VOLUME_UP,
+    WXK_MEDIA_NEXT_TRACK,
+    WXK_MEDIA_PREV_TRACK,
+    WXK_MEDIA_STOP,
+    WXK_MEDIA_PLAY_PAUSE,
+    WXK_LAUNCH_MAIL,
+    WXK_LAUNCH_APP1,
+    WXK_LAUNCH_APP2
 };
 
 /**
@@ -1685,17 +1698,6 @@ template <typename T> wxDELETEA(T*& array);
     @header{wx/defs.h}
 */
 #define wxDEPRECATED_BUT_USED_INTERNALLY_INLINE(func, body)
-
-/**
-    @c wxEXPLICIT is a macro which expands to the C++ @c explicit keyword if
-    the compiler supports it or nothing otherwise. Thus, it can be used even in
-    the code which might have to be compiled with an old compiler without
-    support for this language feature but still take advantage of it when it is
-    available.
-
-    @header{wx/defs.h}
-*/
-#define wxEXPLICIT
 
 /**
     @c wxOVERRIDE expands to the C++11 @c override keyword if it's supported by

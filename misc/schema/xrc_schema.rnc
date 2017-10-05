@@ -158,7 +158,9 @@ builtinWindowClasses =
     ( unknown
     | wxActivityIndicator
     | wxAnimationCtrl
+    | wxAuiManager
     | wxAuiNotebook
+    | wxAuiPaneInfo
     | wxAuiToolBar
     | wxBannerWindow
     | wxBitmapButton
@@ -252,7 +254,9 @@ builtinClassesNames =
 
     | "wxActivityIndicator"
     | "wxAnimationCtrl"
+    | "wxAuiManager"
     | "wxAuiNotebook"
+    | "wxAuiPaneInfo"
     | "wxAuiToolBar"
     | "wxBannerWindow"
     | "wxBitmapButton"
@@ -438,6 +442,7 @@ t_colour     = xsd:string { pattern = "#[0-9a-zA-Z][0-9a-zA-Z][0-9a-zA-Z][0-9a-z
                xsd:string { pattern = "[^#].*" }
 t_position   = t_size
 t_size       = xsd:string { pattern = "(-?\d+),(-?\d+)d?" }
+t_pair_ints  = xsd:string { pattern = "(-?\d+),(-?\d+)" }
 t_dimension  = xsd:string { pattern = "(-?\d+)d?" }
 
 t_bitmap     = t_url?,
@@ -472,6 +477,8 @@ t_imagelist  = (
                )
 
 t_list_of_numbers = xsd:string { pattern = "\d+(,\d+)*" }
+
+t_list_of_numbers_with_weights = xsd:string { pattern = "\d+(:\d+)?(,\d+(:\d+)?)*" }
 
 
 #
@@ -534,6 +541,14 @@ wxAnimationCtrl =
     }
 
 
+wxAuiManager =
+    element object {
+        attribute class { "wxAuiManager" } &
+        stdObjectNodeAttributes &
+        (wxAuiPaneInfo | objectRef)*
+    }
+
+
 wxAuiNotebook =
     element object {
         attribute class { "wxAuiNotebook" } &
@@ -548,6 +563,48 @@ wxAuiNotebook_notebookpage =
         [xrc:p="important"] element label {_, t_text }* &
         [xrc:p="o"] element bitmap   {_, t_bitmap }* &
         [xrc:p="o"] element selected {_, t_bool }* &
+        windowNode
+    }
+
+
+wxAuiPaneInfo =
+    element object {
+        attribute class { "wxAuiPaneInfo" } &
+        stdObjectNodeAttributes &
+        [xrc:p="important"] element caption {_, t_text }* &
+        [xrc:p="o"] element caption_visible {_, t_bool }* &
+        [xrc:p="o"] element close_button    {_, t_bool }* &
+        [xrc:p="o"] element minimize_button {_, t_bool }* &
+        [xrc:p="o"] element maximize_button {_, t_bool }* &
+        [xrc:p="o"] element pin_button      {_, t_bool }* &
+        [xrc:p="o"] element gripper         {_, t_bool }* &
+        [xrc:p="o"] element pane_border     {_, t_bool }* &
+        [xrc:p="o"] element dock            {_} * &
+        [xrc:p="o"] element float           {_} * &
+        [xrc:p="o"] element top_dockable    {_, t_bool }* &
+        [xrc:p="o"] element bottom_dockable {_, t_bool }* &
+        [xrc:p="o"] element left_dockable   {_, t_bool }* &
+        [xrc:p="o"] element right_dockable  {_, t_bool }* &
+        [xrc:p="o"] element dock_fixed      {_, t_bool }* &
+        [xrc:p="o"] element resizable       {_, t_bool }* &
+        [xrc:p="o"] element movable         {_, t_bool }* &
+        [xrc:p="o"] element floatable       {_, t_bool }* &
+        [xrc:p="o"] element floating_size   {_, t_size }* &
+        [xrc:p="o"] element min_size        {_, t_size }* &
+        [xrc:p="o"] element max_size        {_, t_size }* &
+        [xrc:p="o"] element best_size       {_, t_size }* &
+        [xrc:p="o"] element row             {_, t_integer }* &
+        [xrc:p="o"] element layer           {_, t_integer }* &
+        [xrc:p="o"] element default_pane    {_} * &
+        [xrc:p="o"] element toolbar_pane    {_} * &
+        [xrc:p="o"] element center_pane     {_} * &
+        [xrc:p="o"] element direction       {_, t_integer }* &
+        [xrc:p="o"] element top             {_} * &
+        [xrc:p="o"] element bottom          {_} * &
+        [xrc:p="o"] element left            {_} * &
+        [xrc:p="o"] element right           {_} * &
+        [xrc:p="o"] element centre          {_} * &
+        [xrc:p="o"] element center          {_} * &
         windowNode
     }
 
@@ -1451,7 +1508,9 @@ wxToggleButton =
         stdObjectNodeAttributes &
         stdWindowProperties &
         [xrc:p="important"] element label {_, t_text }* &
-        [xrc:p="o"] element checked {_, t_bool }*
+        [xrc:p="o"] element checked {_, t_bool }* &
+        [xrc:p="o"] element bitmap         {_, t_bitmap }* &
+        [xrc:p="o"] element bitmapposition {_, t_direction }*
     }
 
 
@@ -1702,7 +1761,7 @@ wxBoxSizer_horz_item =
         [xrc:p="o"] element option   {_, t_integer }* &
         [xrc:p="o"] element border   {_, t_dimension }* &
         [xrc:p="o"] element minsize  {_, t_size }* &
-        [xrc:p="o"] element ratio    {_, t_size }* &
+        [xrc:p="o"] element ratio    {_, t_pair_ints }* &
         [xrc:p="o"] element flag     {_, t_horz_sizer_flags}*
     }
 
@@ -1723,7 +1782,7 @@ wxBoxSizer_vert_item =
         [xrc:p="o"] element option   {_, t_integer }* &
         [xrc:p="o"] element border   {_, t_dimension }* &
         [xrc:p="o"] element minsize  {_, t_size }* &
-        [xrc:p="o"] element ratio    {_, t_size }* &
+        [xrc:p="o"] element ratio    {_, t_pair_ints }* &
         [xrc:p="o"] element flag     {_, t_vert_sizer_flags }*
     }
 
@@ -1743,7 +1802,7 @@ wxGridSizer_item =
         stdObjectNodeAttributes &
         [xrc:p="o"] element border   {_, t_dimension }* &
         [xrc:p="o"] element minsize  {_, t_size }* &
-        [xrc:p="o"] element ratio    {_, t_size }* &
+        [xrc:p="o"] element ratio    {_, t_pair_ints }* &
         [xrc:p="o"] element flag     {_, t_grid_sizer_flags }*
     }
 
@@ -1763,9 +1822,9 @@ wxSizerGB_item =
         stdObjectNodeAttributes &
         [xrc:p="o"] element border   {_, t_dimension }* &
         [xrc:p="o"] element minsize  {_, t_size }* &
-        [xrc:p="o"] element ratio    {_, t_size }* &
-        [xrc:p="o"] element cellpos  {_, t_position }* &
-        [xrc:p="o"] element cellspan {_, t_size }* &
+        [xrc:p="o"] element ratio    {_, t_pair_ints }* &
+        [xrc:p="o"] element cellpos  {_, t_pair_ints }* &
+        [xrc:p="o"] element cellspan {_, t_pair_ints }* &
         [xrc:p="o"] element flag     {_,
             xsd:string {
                 pattern = "(wxLEFT|wxRIGHT|wxTOP|wxBOTTOM|wxNORTH|wxSOUTH|wxEAST|wxWEST|wxALL|wxGROW|wxEXPAND|wxSHAPED|wxSTRETCH_NOT|wxALIGN_CENTER|wxALIGN_CENTRE|wxALIGN_LEFT|wxALIGN_RIGHT|wxALIGN_TOP|wxALIGN_BOTTOM|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTRE_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALIGN_CENTRE_VERTICAL|wxRESERVE_SPACE_EVEN_IF_HIDDEN)( *\| *(wxLEFT|wxRIGHT|wxTOP|wxBOTTOM|wxNORTH|wxSOUTH|wxEAST|wxWEST|wxALL|wxGROW|wxEXPAND|wxSHAPED|wxSTRETCH_NOT|wxALIGN_CENTER|wxALIGN_CENTRE|wxALIGN_LEFT|wxALIGN_RIGHT|wxALIGN_TOP|wxALIGN_BOTTOM|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTRE_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALIGN_CENTRE_VERTICAL|wxRESERVE_SPACE_EVEN_IF_HIDDEN))*"
@@ -1844,8 +1903,8 @@ wxFlexGridSizer =
         [xrc:p="o"] element nonflexiblegrowmode {_, ("wxFLEX_GROWMODE_NONE" |
                                                      "wxFLEX_GROWMODE_SPECIFIED" |
                                                      "wxFLEX_GROWMODE_ALL") }* &
-        [xrc:p="o"] element growablerows        {_, t_list_of_numbers }* &
-        [xrc:p="o"] element growablecols        {_, t_list_of_numbers }* &
+        [xrc:p="o"] element growablerows        {_, t_list_of_numbers_with_weights }* &
+        [xrc:p="o"] element growablecols        {_, t_list_of_numbers_with_weights }* &
         (wxGridSizer_item | objectRef)*
     }
 
@@ -1860,8 +1919,8 @@ wxGridBagSizer =
         [xrc:p="o"] element nonflexiblegrowmode {_, ("wxFLEX_GROWMODE_NONE" |
                                                      "wxFLEX_GROWMODE_SPECIFIED" |
                                                      "wxFLEX_GROWMODE_ALL") }* &
-        [xrc:p="o"] element growablerows        {_, t_list_of_numbers }* &
-        [xrc:p="o"] element growablecols        {_, t_list_of_numbers }* &
+        [xrc:p="o"] element growablerows        {_, t_list_of_numbers_with_weights }* &
+        [xrc:p="o"] element growablecols        {_, t_list_of_numbers_with_weights }* &
         (wxSizerGB_item | objectRef)*
     }
 

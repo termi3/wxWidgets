@@ -114,6 +114,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     $(BASE_UNIX_AND_DARWIN_NOTWXMAC_SRC)
     src/unix/fswatcher_inotify.cpp
     src/unix/stdpaths.cpp
+    src/unix/secretstore.cpp
 </set>
 <set var="BASE_UNIX_HDR" hints="files">
     $(BASE_UNIX_AND_DARWIN_NOTWXMAC_HDR)
@@ -144,6 +145,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/utils.cpp
     src/msw/utilsexc.cpp
     src/msw/fswatcher.cpp
+    src/msw/secretstore.cpp
 </set>
 <set var="BASE_AND_GUI_WIN32_SRC" hints="files">
     src/msw/main.cpp
@@ -167,6 +169,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/msw/stackwalk.h
     wx/msw/stdpaths.h
     wx/msw/winundef.h
+    wx/msw/winver.h
     wx/msw/wrapcctl.h
     wx/msw/wrapcdlg.h
     wx/msw/wrapwin.h
@@ -183,6 +186,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/core/evtloop_cf.cpp
     src/osx/core/strconv_cf.cpp
     src/osx/core/utilsexc_base.cpp
+    src/osx/cocoa/utils_base.mm
+    src/osx/core/secretstore.cpp
 </set>
 <set var="BASE_COREFOUNDATION_HDR" hints="files">
     wx/osx/core/cfdataref.h
@@ -192,7 +197,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/osx/core/evtloop.h
     wx/osx/core/objcid.h
     wx/osx/core/private.h
-    wx/osx/core/stdpaths.h
+    wx/osx/core/colour.h
+    wx/osx/carbon/region.h
 </set>
 
 <!-- Base files used by OS X ports (not Carbon) -->
@@ -201,6 +207,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     $(BASE_COREFOUNDATION_SRC)
     $(BASE_UNIX_AND_DARWIN_SRC)
     src/osx/fswatcher_fsevents.cpp
+    src/osx/cocoa/stdpaths.mm
 </set>
 <set var="BASE_OSX_SHARED_HDR" hints="files">
     $(BASE_COREFOUNDATION_HDR)
@@ -208,17 +215,10 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/osx/fswatcher_fsevents.h
 </set>
 <!-- Base and GUI files used by OS X -->
-<set var="BASE_AND_GUI_OSX_CARBON_SRC" hints="files">
-    src/osx/carbon/utils.cpp
-    src/osx/carbon/uma.cpp
-    src/unix/stdpaths.cpp
-    src/osx/core/stdpaths_cf.cpp
-</set>
 
 <set var="BASE_AND_GUI_OSX_COCOA_SRC" hints="files">
-    src/osx/cocoa/utils.mm
     src/osx/cocoa/power.mm
-    src/osx/cocoa/stdpaths.mm
+    src/osx/cocoa/utils.mm
 </set>
 
 <set var="BASE_AND_GUI_OSX_IPHONE_SRC" hints="files">
@@ -420,6 +420,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/qt/dvrenderer.h
     wx/qt/dvrenderers.h
     wx/qt/taskbar.h
+    wx/generic/activityindicator.h
 </set>
 
 <set var="ADVANCED_QT_SRC" hints="files">
@@ -434,6 +435,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/qt/taskbar.cpp
     src/common/taskbarcmn.cpp
     src/qt/utils.cpp
+    src/generic/activityindicator.cpp
 </set>
 
 <set var="QT_HDR" hints="files">
@@ -543,6 +545,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/common/zstream.cpp
     src/common/fswatchercmn.cpp
     src/generic/fswatcherg.cpp
+    src/common/secretstore.cpp
 </set>
 <set var="BASE_AND_GUI_CMN_SRC" hints="files">
     src/common/event.cpp
@@ -714,6 +717,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/meta/removeref.h
     wx/fswatcher.h
     wx/generic/fswatcher.h
+    wx/secretstore.h
 </set>
 
 
@@ -914,6 +918,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/generic/buttonbar.cpp
     src/generic/choicdgg.cpp
     src/generic/choicbkg.cpp
+    src/generic/collheaderctrlg.cpp
     src/generic/combog.cpp
     src/generic/dcpsg.cpp
     src/generic/dirctrlg.cpp
@@ -1181,6 +1186,9 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/xrc/xmlreshandler.h
     wx/systhemectrl.h
     wx/collheaderctrl.h
+    wx/generic/collheaderctrl.h
+    wx/itemattr.h
+    wx/peninfobase.h
 </set>
 
 <!-- ====================================================================== -->
@@ -1221,6 +1229,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/generic/caret.cpp
     src/generic/imaglist.cpp
     src/msw/ole/automtn.cpp
+    src/msw/ole/comimpl.cpp
     src/msw/ole/oleutils.cpp
     src/msw/ole/safearray.cpp
     src/msw/ole/uuid.cpp
@@ -1235,6 +1244,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/generic/caret.h
     wx/generic/imaglist.h
     wx/msw/ole/automtn.h
+    wx/msw/ole/comimpl.h
     wx/msw/ole/oleutils.h
     wx/msw/ole/safearray.h
     wx/msw/ole/uuid.h
@@ -1286,6 +1296,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/gtk/utilsgtk.cpp
     src/gtk/win_gtk.cpp
     src/gtk/window.cpp
+    src/gtk/mimetype.cpp
 </set>
 <set var="GTK2_LOWLEVEL_SRC" hints="files">
     $(GTK_LOWLEVEL_SRC)
@@ -1320,6 +1331,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/gtk/tooltip.h
     wx/gtk/toplevel.h
     wx/gtk/window.h
+    wx/gtk/mimetype.h
 </set>
 <set var="GTK_SRC" hints="files">
     <!-- Generic implementations used by wxGTK: -->
@@ -1555,7 +1567,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/gtk1/toolbar.cpp
     src/gtk1/textctrl.cpp
     src/gtk1/tglbtn.cpp
-    src/generic/collheaderctrlg.cpp
 </set>
 <set var="GTK1_HDR" hints="files">
     wx/generic/clrpickerg.h
@@ -1697,7 +1708,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/generic/statline.cpp
     src/generic/statusbr.cpp
     src/generic/tabg.cpp
-    src/generic/collheaderctrlg.cpp
 </set>
 <set var="MOTIF_HDR" hints="files">
     wx/generic/clrpickerg.h
@@ -1878,6 +1888,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/imaglist.cpp
     src/msw/minifram.cpp
     src/msw/nonownedwnd.cpp
+    src/msw/ole/comimpl.cpp
     src/msw/ole/dataobj.cpp
     src/msw/ole/dropsrc.cpp
     src/msw/ole/droptgt.cpp
@@ -1900,6 +1911,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/uxtheme.cpp
     src/msw/window.cpp
     src/msw/graphicsd2d.cpp
+    src/msw/rt/utilsrt.cpp
 </set>
 <set var="MSW_LOWLEVEL_HDR" hints="files">
     wx/msw/nonownedwnd.h
@@ -1962,7 +1974,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/notebook.cpp
     src/msw/ole/access.cpp
     src/msw/ownerdrw.cpp
-    src/msw/panel.cpp
     src/msw/progdlg.cpp
     src/msw/radiobox.cpp
     src/msw/radiobut.cpp
@@ -1983,7 +1994,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/tglbtn.cpp
     src/msw/treectrl.cpp
     src/msw/systhemectrl.cpp
-    src/generic/collheaderctrlg.cpp
+    src/msw/customdraw.cpp
 </set>
 <set var="MSW_HDR" hints="files">
     wx/generic/clrpickerg.h
@@ -2043,6 +2054,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/msw/msvcrt.h
     wx/msw/notebook.h
     wx/msw/ole/access.h
+    wx/msw/ole/comimpl.h
     wx/msw/ole/dataform.h
     wx/msw/ole/dataobj.h
     wx/msw/ole/dataobj2.h
@@ -2081,7 +2093,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/msw/toplevel.h
     wx/msw/treectrl.h
     wx/msw/window.h
-    wx/generic/collheaderctrl.h
+    wx/msw/rt/utils.h
 </set>
 <set var="MSW_RSC" hints="files">
     <!-- Resources must be installed together with headers: -->
@@ -2234,7 +2246,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 <set var="OSX_LOWLEVEL_HDR" hints="files">
 </set>
 
-<set var="OSX_CARBON_COCOA_SRC" hints="files">
+<set var="OSX_COMMON_SRC" hints="files">
 <if cond="PLATFORM_MACOSX=='1'">
     <!-- Common controls implementation -->
     src/osx/anybutton_osx.cpp
@@ -2277,7 +2289,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/carbon/gdiobj.cpp
     src/osx/carbon/icon.cpp
     src/osx/carbon/app.cpp
-    src/osx/carbon/combobox.cpp
     src/osx/carbon/control.cpp
     src/osx/carbon/dataobj.cpp
     src/osx/carbon/dcclient.cpp
@@ -2288,7 +2299,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/carbon/frame.cpp
     src/osx/carbon/mdi.cpp
     src/osx/carbon/metafile.cpp
-    src/osx/carbon/overlay.cpp
     src/osx/carbon/popupwin.cpp
     src/osx/carbon/renderer.cpp
     src/osx/carbon/statbrma.cpp
@@ -2298,7 +2308,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     <!-- Generic implementations used by wxOSX: -->
     src/generic/caret.cpp
     src/generic/clrpickerg.cpp
-    src/generic/collheaderctrlg.cpp
     src/generic/collpaneg.cpp
     src/generic/colrdlgg.cpp
     src/generic/dirdlgg.cpp
@@ -2411,68 +2420,11 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 </set>
 
 <!-- ====================================================================== -->
-<!--                              wxOSX/Carbon                              -->
-<!-- ====================================================================== -->
-
-<set var="OSX_CARBON_SRC" hints="files">
-    <!-- carbon files -->
-    $(OSX_CARBON_COCOA_SRC)
-    src/osx/carbon/anybutton.cpp
-    src/osx/carbon/bmpbuttn.cpp
-    src/osx/carbon/button.cpp
-    src/osx/carbon/checkbox.cpp
-    src/osx/carbon/choice.cpp
-    src/osx/carbon/colordlg.cpp
-    src/osx/carbon/dialog.cpp
-    src/osx/carbon/dirdlg.cpp
-    src/osx/carbon/dnd.cpp
-    src/osx/carbon/evtloop.cpp
-    src/osx/carbon/filedlg.cpp
-    src/osx/carbon/gauge.cpp
-    src/osx/carbon/listbox.cpp
-    src/osx/carbon/listctrl_mac.cpp
-    src/osx/carbon/menu.cpp
-    src/osx/carbon/menuitem.cpp
-    src/osx/carbon/msgdlg.cpp
-    src/osx/carbon/nonownedwnd.cpp
-    src/osx/carbon/notebmac.cpp
-    src/osx/carbon/printdlg.cpp
-    src/osx/carbon/radiobut.cpp
-    src/osx/carbon/scrolbar.cpp
-    src/osx/carbon/slider.cpp
-    src/osx/carbon/spinbutt.cpp
-    src/osx/carbon/srchctrl.cpp
-    src/osx/carbon/statbmp.cpp
-    src/osx/carbon/statbox.cpp
-    src/osx/carbon/statlmac.cpp
-    src/osx/carbon/stattext.cpp
-    src/osx/carbon/textctrl.cpp
-    src/osx/carbon/tglbtn.cpp
-    src/osx/carbon/toolbar.cpp
-    src/osx/carbon/tooltip.cpp
-    src/osx/carbon/window.cpp
-    src/osx/carbon/settings.cpp
-</set>
-
-<!-- wxMac Carbon header files -->
-<set var="OSX_CARBON_HDR" hints="files">
-    <!-- core files -->
-    wx/osx/core/colour.h
-    <!-- carbon files -->
-    wx/osx/carbon/chkconf.h
-    wx/osx/carbon/evtloop.h
-    wx/osx/carbon/private.h
-    wx/osx/carbon/region.h
-    wx/osx/carbon/statbmp.h
-    wx/osx/carbon/uma.h
-</set>
-
-<!-- ====================================================================== -->
 <!--                              wxOSX/Cocoa                               -->
 <!-- ====================================================================== -->
 
 <set var="OSX_COCOA_SRC" hints="files">
-    $(OSX_CARBON_COCOA_SRC)
+    $(OSX_COMMON_SRC)
     src/osx/cocoa/anybutton.mm
     src/osx/cocoa/appprogress.mm
     src/osx/cocoa/button.mm
@@ -2509,12 +2461,12 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/cocoa/tooltip.mm
     src/osx/cocoa/window.mm
     src/osx/cocoa/settings.mm
+    src/osx/cocoa/overlay.mm
 </set>
 <set var="OSX_COCOA_HDR" hints="files">
     wx/osx/cocoa/chkconf.h
     wx/osx/cocoa/evtloop.h
     wx/osx/cocoa/private.h
-    $(OSX_CARBON_HDR) <!-- FIXME: these headers need moved somewhere shared... -->
     wx/generic/region.h
     wx/osx/cocoa/stdpaths.h
 </set>
@@ -2524,7 +2476,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 <!-- ====================================================================== -->
 
 <set var="OSX_IPHONE_SRC" hints="files">
-    $(OSX_CARBON_COCOA_SRC)
+    $(OSX_COMMON_SRC)
     src/generic/regiong.cpp
     src/generic/icon.cpp
     <!-- iphone files -->
@@ -2543,213 +2495,16 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/iphone/toolbar.mm
     src/osx/iphone/utils.mm
     src/osx/iphone/window.mm
-    src/osx/carbon/settings.cpp
     src/osx/cocoa/stdpaths.mm
+    src/osx/iphone/settings.mm
 </set>
 
 <set var="OSX_IPHONE_HDR" hints="files">
     wx/osx/iphone/chkconf.h
     wx/osx/iphone/evtloop.h
     wx/osx/iphone/private.h
-    $(OSX_CARBON_HDR) <!-- FIXME: these headers need moved somewhere shared... -->
     wx/generic/region.h
 </set>
-
-<!-- ====================================================================== -->
-<!--                              wxCocoa                                   -->
-<!-- ====================================================================== -->
-
-<set var="COCOA_LOWLEVEL_SRC" hints="files">
-    <!-- Shared wxMac and wxCocoa files -->
-    src/osx/core/hid.cpp
-    src/osx/core/utilsexc_cf.cpp
-</set>
-<set var="COCOA_LOWLEVEL_HDR" hints="files">
-</set>
-<set var="COCOA_SRC" hints="files">
-    src/cocoa/NSBox.mm
-    src/cocoa/NSButton.mm
-    src/cocoa/NSControl.mm
-    src/cocoa/NSMenu.mm
-    src/cocoa/NSPanel.mm
-    src/cocoa/NSScroller.mm
-    src/cocoa/NSSlider.mm
-    src/cocoa/NSTabView.mm
-    src/cocoa/NSTableView.mm
-    src/cocoa/NSTextField.mm
-    src/cocoa/NSView.mm
-    src/cocoa/NSWindow.mm
-    src/cocoa/ObjcRef.mm
-    src/cocoa/app.mm
-    src/cocoa/bitmap.mm
-    src/cocoa/bmpbuttn.mm
-    src/cocoa/brush.mm
-    src/cocoa/button.mm
-    src/cocoa/checkbox.mm
-    src/cocoa/checklst.mm
-    src/cocoa/choice.mm
-    src/cocoa/clipbrd.mm
-    src/cocoa/colordlg.mm
-    src/cocoa/colour.mm
-    src/cocoa/combobox.mm
-    src/cocoa/control.mm
-    src/cocoa/cursor.mm
-    src/cocoa/data.cpp
-    src/cocoa/dataobj.mm
-    src/cocoa/dc.mm
-    src/cocoa/dcclient.mm
-    src/cocoa/dcmemory.mm
-    src/cocoa/dcscreen.cpp
-    src/cocoa/dialog.mm
-    src/cocoa/dirdlg.mm
-    src/cocoa/display.mm
-    src/cocoa/drawer.mm
-    src/cocoa/evtloop.mm
-    src/cocoa/filedlg.mm
-    src/cocoa/font.mm
-    src/cocoa/fontdlg.mm
-    src/cocoa/fontenum.mm
-    src/cocoa/fontutil.cpp
-    src/cocoa/frame.mm
-    src/cocoa/gauge.mm
-    src/cocoa/icon.mm
-    src/cocoa/listbox.mm
-    src/cocoa/main.cpp
-    src/cocoa/mbarman.mm
-    src/cocoa/mdi.mm
-    src/cocoa/menu.mm
-    src/cocoa/menuitem.mm
-    src/cocoa/msgdlg.mm
-    src/cocoa/notebook.mm
-    src/cocoa/pen.mm
-    src/cocoa/radiobox.mm
-    src/cocoa/radiobut.mm
-    src/cocoa/region.mm
-    src/cocoa/scrolbar.mm
-    src/cocoa/settings.mm
-    src/cocoa/slider.mm
-    src/cocoa/sound.mm
-    src/cocoa/spinbutt.mm
-    src/cocoa/statbmp.mm
-    src/cocoa/statbox.mm
-    src/cocoa/statline2.mm
-    src/cocoa/stattext.mm
-    src/cocoa/textctrl.mm
-    src/cocoa/timer.mm
-    src/cocoa/toolbar.mm
-    src/cocoa/tooltip.mm
-    src/cocoa/toplevel.mm
-    src/cocoa/utils.mm
-    src/cocoa/utilsexc.mm
-    src/cocoa/window.mm
-    <!-- Generic implementations used by wxCocoa: -->
-    src/generic/accel.cpp
-    src/generic/caret.cpp
-    src/generic/clrpickerg.cpp
-    src/generic/collpaneg.cpp
-    src/generic/colrdlgg.cpp
-    src/generic/fdrepdlg.cpp
-    src/generic/filepickerg.cpp
-    src/generic/fontdlgg.cpp
-    src/generic/fontpickerg.cpp
-    src/generic/imaglist.cpp
-    src/generic/listctrl.cpp
-    src/generic/paletteg.cpp
-    src/generic/regiong.cpp
-    src/generic/statusbr.cpp
-    src/generic/textmeasure.cpp
-    src/generic/collheaderctrlg.cpp
-</set>
-<set var="COCOA_HDR" hints="files">
-    wx/cocoa/NSApplication.h
-    wx/cocoa/NSBox.h
-    wx/cocoa/NSButton.h
-    wx/cocoa/NSControl.h
-    wx/cocoa/NSMenu.h
-    wx/cocoa/NSPanel.h
-    wx/cocoa/NSScroller.h
-    wx/cocoa/NSSlider.h
-    wx/cocoa/NSTabView.h
-    wx/cocoa/NSTableView.h
-    wx/cocoa/NSTextField.h
-    wx/cocoa/NSView.h
-    wx/cocoa/NSWindow.h
-    wx/cocoa/ObjcAssociate.h
-    wx/cocoa/ObjcPose.h
-    wx/cocoa/ObjcRef.h
-    wx/cocoa/app.h
-    wx/cocoa/bitmap.h
-    wx/cocoa/bmpbuttn.h
-    wx/cocoa/brush.h
-    wx/cocoa/button.h
-    wx/cocoa/checkbox.h
-    wx/cocoa/checklst.h
-    wx/cocoa/choice.h
-    wx/cocoa/clipbrd.h
-    wx/cocoa/colordlg.h
-    wx/cocoa/colour.h
-    wx/cocoa/combobox.h
-    wx/cocoa/control.h
-    wx/cocoa/cursor.h
-    wx/cocoa/dataform.h
-    wx/cocoa/dataobj.h
-    wx/cocoa/dataobj2.h
-    wx/cocoa/dc.h
-    wx/cocoa/dcclient.h
-    wx/cocoa/dcmemory.h
-    wx/cocoa/dcscreen.h
-    wx/cocoa/dialog.h
-    wx/cocoa/dirdlg.h
-    wx/cocoa/drawer.h
-    wx/cocoa/evtloop.h
-    wx/cocoa/filedlg.h
-    wx/cocoa/font.h
-    wx/cocoa/fontdlg.h
-    wx/cocoa/frame.h
-    wx/cocoa/gauge.h
-    wx/cocoa/icon.h
-    wx/cocoa/listbox.h
-    wx/cocoa/log.h
-    wx/cocoa/mbarman.h
-    wx/cocoa/mdi.h
-    wx/cocoa/menu.h
-    wx/cocoa/menuitem.h
-    wx/cocoa/msgdlg.h
-    wx/cocoa/notebook.h
-    wx/cocoa/pen.h
-    wx/cocoa/radiobox.h
-    wx/cocoa/radiobut.h
-    wx/cocoa/region.h
-    wx/cocoa/scrolbar.h
-    wx/cocoa/slider.h
-    wx/cocoa/sound.h
-    wx/cocoa/spinbutt.h
-    wx/cocoa/statbmp.h
-    wx/cocoa/statbox.h
-    wx/cocoa/statline.h
-    wx/cocoa/stattext.h
-    wx/cocoa/textctrl.h
-    wx/cocoa/toolbar.h
-    wx/cocoa/tooltip.h
-    wx/cocoa/toplevel.h
-    wx/cocoa/window.h
-    <!-- Semi-private headers -->
-    wx/cocoa/objc/objc_uniquifying.h
-    <!-- Generic implementations used by wxCocoa: -->
-    wx/generic/caret.h
-    wx/generic/clrpickerg.h
-    wx/generic/collpaneg.h
-    wx/generic/fdrepdlg.h
-    wx/generic/fontdlgg.h
-    wx/generic/fontpickerg.h
-    wx/generic/imaglist.h
-    wx/generic/listctrl.h
-    wx/generic/paletteg.h
-    wx/generic/region.h
-    wx/generic/statusbr.h
-</set>
-
-
 
 <!-- ====================================================================== -->
 <!--                              wxUniversal                               -->
@@ -2825,7 +2580,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/univ/toolbar.cpp
     src/univ/topluniv.cpp
     src/univ/winuniv.cpp
-    src/generic/collheaderctrlg.cpp
+    src/generic/activityindicator.cpp
 </set>
 <set var="UNIV_HDR" hints="files">
     $(UNIV_PLATFORM_HDR)
@@ -2928,6 +2683,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/generic/treelist.cpp
     src/generic/wizard.cpp
     src/common/addremovectrl.cpp
+    src/common/notifmsgcmn.cpp
 </set>
 
 <set var="ADVANCED_CMN_HDR" hints="files">
@@ -2991,11 +2747,13 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/richtooltip.cpp
     src/msw/sound.cpp
     src/msw/taskbar.cpp
+    src/msw/rt/notifmsgrt.cpp
+    src/generic/activityindicator.cpp
 </set>
 <set var="ADVANCED_MSW_HDR" hints="files">
-    wx/msw/notifmsg.h
     wx/msw/sound.h
     wx/msw/taskbar.h
+    wx/generic/activityindicator.h
 </set>
 
 <!-- not used with wxUniv -->
@@ -3009,7 +2767,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/msw/datetimectrl.cpp
     src/msw/hyperlink.cpp
     src/msw/timectrl.cpp
-    src/generic/activityindicator.cpp
 </set>
 <set var="ADVANCED_MSW_NATIVE_HDR" hints="files">
     wx/generic/animate.h
@@ -3020,7 +2777,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/msw/datetimectrl.h
     wx/msw/hyperlink.h
     wx/msw/timectrl.h
-    wx/generic/activityindicator.h
 </set>
 
 <!-- not built on WindowsCE: -->
@@ -3029,34 +2785,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 </set>
 <set var="ADVANCED_MSW_DESKTOP_HDR" hints="files">
     wx/msw/joystick.h
-</set>
-
-<set var="ADVANCED_OSX_CARBON_SRC" hints="files">
-    src/common/taskbarcmn.cpp
-    src/generic/animateg.cpp
-    src/osx/carbon/aboutdlg.cpp
-    src/osx/carbon/drawer.cpp
-    src/osx/dataview_osx.cpp
-    src/osx/carbon/dataview.cpp
-    src/osx/sound_osx.cpp
-    src/osx/carbon/sound.cpp
-    src/osx/carbon/taskbar.cpp
-    src/osx/core/hidjoystick.cpp
-    src/generic/activityindicator.cpp
-</set>
-
-<set var="ADVANCED_OSX_CARBON_HDR" hints="files">
-    wx/generic/animate.h
-    wx/osx/dataview.h
-    wx/osx/dvrenderer.h
-    wx/osx/dvrenderers.h
-    wx/osx/joystick.h
-    wx/osx/sound.h
-    wx/osx/taskbarosx.h
-    wx/osx/carbon/drawer.h
-    wx/osx/carbon/dataview.h
-    wx/osx/core/joystick.h
-    wx/generic/activityindicator.h
 </set>
 
 <set var="ADVANCED_OSX_COCOA_SRC" hints="files">
@@ -3075,6 +2803,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/osx/cocoa/taskbar.mm
     src/osx/core/hidjoystick.cpp
     src/osx/cocoa/activityindicator.mm
+    src/osx/cocoa/notifmsg.mm
 </set>
 
 <set var="ADVANCED_OSX_COCOA_HDR" hints="files">
@@ -3172,7 +2901,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 </set>
 <set var="ADVANCED_GTK_HDR" hints="files">
     $(ADVANCED_GTK_PLATFORM_HDR)
-    wx/gtk/notifmsg.h
     wx/gtk/taskbar.h
     wx/generic/activityindicator.h
 </set>
@@ -3255,12 +2983,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 <set var="MEDIA_MSW_DESKTOP_HDR" hints="files">
 </set>
 
-<set var="MEDIA_OSX_CARBON_SRC" hints="files">
-    src/osx/carbon/mediactrl.cpp
-</set>
-<set var="MEDIA_OSX_CARBON_HDR" hints="files">
-</set>
-
 <set var="MEDIA_OSX_COCOA_SRC" hints="files">
     src/osx/cocoa/mediactrl.mm
 </set>
@@ -3282,6 +3004,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 
 <set var="MEDIA_UNIX_SRC" hints="files">
     src/unix/mediactrl.cpp
+    src/unix/mediactrl_gstplayer.cpp
 </set>
 <set var="MEDIA_UNIX_HDR" hints="files">
 </set>
@@ -3376,7 +3099,10 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 
 <set var="WEBVIEW_SRC_PLATFORM">
     <if cond="TOOLKIT=='MSW'">src/msw/webview_ie.cpp</if>
-    <if cond="TOOLKIT=='GTK'">src/gtk/webview_webkit.cpp</if>
+    <if cond="TOOLKIT=='GTK'">
+        src/gtk/webview_webkit.cpp
+        src/gtk/webview_webkit2.cpp
+    </if>
     <if cond="PLATFORM_MACOSX=='1'">src/osx/webview_webkit.mm</if>
 </set>
 <set var="WEBVIEW_CMN_SRC" hints="files">
@@ -3412,6 +3138,10 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 <set var="WEBVIEW_HDR" hints="files">
     $(WEBVIEW_HDR_PLATFORM)
     $(WEBVIEW_CMN_HDR)
+</set>
+
+<set var="WEBVIEW_WEBKIT2_EXTENSION_SRC" hints="files">
+    src/gtk/webview_webkit2_extension.cpp
 </set>
 
 <!-- ====================================================================== -->
@@ -3578,7 +3308,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 <!-- ====================================================================== -->
 
 <set var="OPENGL_SRC_PLATFORM" hints="files">
-    <if cond="TOOLKIT=='OSX_CARBON'">src/osx/carbon/glcanvas.cpp src/osx/glcanvas_osx.cpp</if>
     <if cond="TOOLKIT=='OSX_COCOA'">src/osx/cocoa/glcanvas.mm src/osx/glcanvas_osx.cpp</if>
     <if cond="TOOLKIT=='OSX_IPHONE'">src/osx/iphone/glcanvas.mm src/osx/glcanvas_osx.cpp</if>
     <if cond="TOOLKIT=='COCOA'">src/cocoa/glcanvas.mm</if>
@@ -3606,7 +3335,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 </set>
 
 <set var="OPENGL_HDR_PLATFORM" hints="files">
-    <if cond="TOOLKIT=='OSX_CARBON'">wx/osx/glcanvas.h</if>
     <if cond="TOOLKIT=='OSX_COCOA'">wx/osx/glcanvas.h</if>
     <if cond="TOOLKIT=='COCOA'">wx/cocoa/glcanvas.h</if>
     <if cond="TOOLKIT=='GTK' and TOOLKIT_VERSION=='3'">
@@ -3657,9 +3385,11 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
 </set>
 <set var="AUI_MSW_SRC" hints="files">
     src/aui/tabartmsw.cpp
+    src/aui/barartmsw.cpp
 </set>
 <set var="AUI_MSW_HDR" hints="files">
     wx/aui/tabartmsw.h
+    wx/aui/barartmsw.h
 </set>
 <set var="AUI_PLATFORM_SRC" hints="files">
     <if cond="TOOLKIT=='MSW'">$(AUI_MSW_SRC)</if>
@@ -3675,7 +3405,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     src/aui/auibar.cpp
     src/aui/tabmdi.cpp
     src/aui/tabart.cpp
-    src/xrc/xh_auinotbk.cpp
+    src/xrc/xh_aui.cpp
     src/xrc/xh_auitoolb.cpp
 </set>
 <set var="AUI_SRC" hints="files">
@@ -3692,7 +3422,7 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     wx/aui/tabmdi.h
     wx/aui/aui.h
     wx/aui/tabart.h
-    wx/xrc/xh_auinotbk.h
+    wx/xrc/xh_aui.h
     wx/xrc/xh_auitoolb.h
 </set>
 <set var="AUI_HDR" hints="files">
@@ -3824,7 +3554,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     <!-- Nested if would be nicer, but this works -->
     <!-- These are the files for PLATFORM_MACOSX -->
     <set var="BASE_OSX_SRC" hints="files">
-        <if cond="TOOLKIT=='OSX_CARBON'">$(BASE_OSX_SHARED_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(BASE_OSX_SHARED_SRC)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(BASE_OSX_SHARED_SRC)</if>
         <if cond="TOOLKIT=='COCOA'">$(BASE_OSX_NOTWXMAC_SRC)</if>
@@ -3843,7 +3572,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         <if cond="PLATFORM_MACOSX=='1'">$(BASE_OSX_SHARED_SRC)</if>
     </set>
     <set var="BASE_AND_GUI_TOOLKIT_SRC" hints="files">
-        <if cond="TOOLKIT=='OSX_CARBON'">$(BASE_AND_GUI_OSX_CARBON_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(BASE_AND_GUI_OSX_COCOA_SRC)</if>
     </set>
     <set var="BASE_AND_GUI_PLATFORM_SRC" hints="files">
@@ -3855,7 +3583,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     <!-- Nested if would be nicer, but this works -->
     <!-- These are the files for PLATFORM_MACOSX -->
     <set var="BASE_OSX_HDR" hints="files">
-        <if cond="TOOLKIT=='OSX_CARBON'">$(BASE_OSX_SHARED_HDR)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(BASE_OSX_SHARED_HDR)</if>
         <if cond="TOOLKIT=='COCOA'">$(BASE_OSX_NOTWXMAC_HDR)</if>
         <if cond="TOOLKIT=='GTK'">$(BASE_OSX_NOTWXMAC_HDR)</if>
@@ -3905,10 +3632,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         <if cond="TOOLKIT=='GTK' and TOOLKIT_VERSION==''">$(GTK1_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='MOTIF'">$(MOTIF_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='MSW'">$(MSW_LOWLEVEL_SRC) $(MSW_DESKTOP_LOWLEVEL_SRC)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(OSX_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(OSX_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(OSX_LOWLEVEL_SRC)</if>
-        <if cond="TOOLKIT=='COCOA'">$(COCOA_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='X11'">$(X11_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='DFB'">$(DFB_LOWLEVEL_SRC)</if>
         <if cond="TOOLKIT=='QT'">$(QT_LOWLEVEL_SRC)</if>
@@ -3919,10 +3644,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         <if cond="TOOLKIT=='GTK' and TOOLKIT_VERSION==''">$(GTK1_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='MOTIF'">$(MOTIF_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='MSW'">$(MSW_LOWLEVEL_HDR) $(MSW_DESKTOP_LOWLEVEL_HDR)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(OSX_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(OSX_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(OSX_LOWLEVEL_HDR)</if>
-        <if cond="TOOLKIT=='COCOA'">$(COCOA_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='X11'">$(X11_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='DFB'">$(DFB_LOWLEVEL_HDR)</if>
         <if cond="TOOLKIT=='QT'">$(QT_LOWLEVEL_HDR)</if>
@@ -3939,10 +3662,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         <if cond="TOOLKIT=='GTK' and TOOLKIT_VERSION==''">$(GTK1_SRC)</if>
         <if cond="TOOLKIT=='MOTIF'">$(MOTIF_SRC)</if>
         <if cond="TOOLKIT=='MSW'">$(MSW_SRC) $(MSW_DESKTOP_SRC)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(OSX_CARBON_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(OSX_COCOA_SRC)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(OSX_IPHONE_SRC)</if>
-        <if cond="TOOLKIT=='COCOA'">$(COCOA_SRC)</if>
         <if cond="TOOLKIT=='QT'">$(QT_SRC)</if>
     </set>
     <set var="GUI_HDR" hints="files">
@@ -3951,10 +3672,8 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         <if cond="TOOLKIT=='GTK' and TOOLKIT_VERSION==''">$(GTK1_HDR)</if>
         <if cond="TOOLKIT=='MOTIF'">$(MOTIF_HDR)</if>
         <if cond="TOOLKIT=='MSW'">$(MSW_HDR) $(MSW_DESKTOP_HDR) $(MSW_RSC)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(OSX_SHARED_HDR) $(OSX_CARBON_HDR)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(OSX_SHARED_HDR) $(OSX_COCOA_HDR)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(OSX_SHARED_HDR) $(OSX_IPHONE_HDR)</if>
-        <if cond="TOOLKIT=='COCOA'">$(COCOA_HDR)</if>
         <if cond="TOOLKIT=='QT'">$(QT_HDR)</if>
     </set>
 
@@ -3970,7 +3689,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     <!-- wxAdvanced files: -->
     <set var="ADVANCED_PLATFORM_SRC" hints="files">
         <if cond="TOOLKIT=='MSW'">$(ADVANCED_MSW_SRC) $(ADVANCED_MSW_DESKTOP_SRC)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(ADVANCED_OSX_CARBON_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(ADVANCED_OSX_COCOA_SRC)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(ADVANCED_OSX_IPHONE_SRC)</if>
         <if cond="TOOLKIT=='COCOA'">$(ADVANCED_COCOA_SRC)</if>
@@ -3983,7 +3701,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     </set>
     <set var="ADVANCED_PLATFORM_HDR" hints="files">
         <if cond="TOOLKIT=='MSW'">$(ADVANCED_MSW_HDR) $(ADVANCED_MSW_DESKTOP_HDR)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(ADVANCED_OSX_CARBON_HDR)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(ADVANCED_OSX_COCOA_HDR)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(ADVANCED_OSX_IPHONE_HDR)</if>
         <if cond="TOOLKIT=='COCOA'">$(ADVANCED_COCOA_HDR)</if>
@@ -4019,7 +3736,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     <!-- wxMedia files: -->
     <set var="MEDIA_PLATFORM_SRC" hints="files">
         <if cond="TOOLKIT=='MSW'">$(MEDIA_MSW_SRC) $(MEDIA_MSW_DESKTOP_SRC)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(MEDIA_OSX_CARBON_SRC)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(MEDIA_OSX_COCOA_SRC)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(MEDIA_OSX_IPHONE_SRC)</if>
         <if cond="TOOLKIT=='COCOA'">$(MEDIA_COCOA_SRC)</if>
@@ -4030,7 +3746,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
     </set>
     <set var="MEDIA_PLATFORM_HDR" hints="files">
         <if cond="TOOLKIT=='MSW'">$(MEDIA_MSW_HDR) $(MEDIA_MSW_DESKTOP_HDR)</if>
-        <if cond="TOOLKIT=='OSX_CARBON'">$(MEDIA_OSX_CARBON_HDR)</if>
         <if cond="TOOLKIT=='OSX_COCOA'">$(MEDIA_OSX_COCOA_HDR)</if>
         <if cond="TOOLKIT=='OSX_IPHONE'">$(MEDIA_OSX_IPHONE_HDR)</if>
         <if cond="TOOLKIT=='COCOA'">$(MEDIA_COCOA_HDR)</if>
@@ -4086,7 +3801,6 @@ IMPORTANT: please read docs/tech/tn0016.txt before modifying this file!
         $(BASE_UNIX_SRC) $(BASE_WIN32_SRC)
         $(BASE_OSX_SRC)
         $(BASE_AND_GUI_CMN_SRC)
-        $(BASE_AND_GUI_OSX_CARBON_SRC)
         $(BASE_AND_GUI_OSX_COCOA_SRC)
         $(BASE_AND_GUI_WIN32_SRC)
         $(NET_CMN_SRC) $(NET_UNIX_SRC) $(NET_OSX_SRC)

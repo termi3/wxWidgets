@@ -370,62 +370,10 @@ static bool DoShowCommFileDialog(OPENFILENAME *of, long style, DWORD *err)
     return false;
 }
 
-// We want to use OPENFILENAME struct version 5 (Windows 2000/XP) but we don't
-// know if the OPENFILENAME declared in the currently used headers is a V5 or
-// V4 (smaller) one so we try to manually extend the struct in case it is the
-// old one.
-//
-// We don't do this under Win64, however, as there are no
-// compilers with old headers for these architectures
-#if defined(__WIN64__)
-    typedef OPENFILENAME wxOPENFILENAME;
-
-    static const DWORD gs_ofStructSize = sizeof(OPENFILENAME);
-#else // __WIN64__
-    #define wxTRY_SMALLER_OPENFILENAME
-
-    struct wxOPENFILENAME : public OPENFILENAME
-    {
-        // fields added in Windows 2000/XP comdlg32.dll version
-        void *pVoid;
-        DWORD dw1;
-        DWORD dw2;
-    };
-
-    // hardcoded sizeof(OPENFILENAME) in the Platform SDK: we have to do it
-    // because sizeof(OPENFILENAME) in the headers we use when compiling the
-    // library could be less if _WIN32_WINNT is not >= 0x500
-    static const DWORD wxOPENFILENAME_V5_SIZE = 88;
-
-    // this is hardcoded sizeof(OPENFILENAME_NT4) from Platform SDK
-    static const DWORD wxOPENFILENAME_V4_SIZE = 76;
-
-    // always try the new one first
-    static DWORD gs_ofStructSize = wxOPENFILENAME_V5_SIZE;
-#endif // __WIN64__/!...
-
 static bool ShowCommFileDialog(OPENFILENAME *of, long style)
 {
     DWORD errCode;
     bool success = DoShowCommFileDialog(of, style, &errCode);
-
-#ifdef wxTRY_SMALLER_OPENFILENAME
-    // the system might be too old to support the new version file dialog
-    // boxes, try with the old size
-    if ( !success && errCode == CDERR_STRUCTSIZE &&
-            of->lStructSize != wxOPENFILENAME_V4_SIZE )
-    {
-        of->lStructSize = wxOPENFILENAME_V4_SIZE;
-
-        success = DoShowCommFileDialog(of, style, &errCode);
-
-        if ( success || !errCode )
-        {
-            // use this struct size for subsequent dialogs
-            gs_ofStructSize = of->lStructSize;
-        }
-    }
-#endif // wxTRY_SMALLER_OPENFILENAME
 
     if ( !success &&
             errCode == FNERR_INVALIDFILENAME &&
@@ -465,10 +413,8 @@ int wxFileDialog::ShowModal()
 {
     WX_HOOK_MODAL_DIALOG();
 
-    HWND hWnd = 0;
-    if (m_parent) hWnd = (HWND) m_parent->GetHWND();
-    if (!hWnd && wxTheApp->GetTopWindow())
-        hWnd = (HWND) wxTheApp->GetTopWindow()->GetHWND();
+    wxWindow* const parent = GetParentForModalDialog(m_parent, GetWindowStyle());
+    WXHWND hWndParent = parent ? GetHwndOf(parent) : NULL;
 
     static wxChar fileNameBuffer [ wxMAXPATH ];           // the file-name
     wxChar        titleBuffer    [ wxMAXFILE+1+wxMAXEXT ];  // the file-name, without path
@@ -519,11 +465,11 @@ int wxFileDialog::ShowModal()
         msw_flags |= OFN_OVERWRITEPROMPT;
     }
 
-    wxOPENFILENAME of;
+    OPENFILENAME of;
     wxZeroMemory(of);
 
-    of.lStructSize       = gs_ofStructSize;
-    of.hwndOwner         = hWnd;
+    of.lStructSize       = sizeof(OPENFILENAME);
+    of.hwndOwner         = hWndParent;
     of.lpstrTitle        = m_message.t_str();
     of.lpstrFileTitle    = titleBuffer;
     of.nMaxFileTitle     = wxMAXFILE + 1 + wxMAXEXT;
@@ -656,35 +602,36 @@ int wxFileDialog::ShowModal()
         }
     }
 
+    // Create a temporary struct to restore the CWD when we exit this function
     // store off before the standard windows dialog can possibly change it
-    const wxString cwdOrig = wxGetCwd();
+    struct CwdRestore
+    {
+        wxString value;
+        ~CwdRestore()
+        {
+            if (!value.empty())
+                wxSetWorkingDirectory(value);
+        }
+    } cwdOrig;
+
+    // GetOpenFileName will always change the current working directory
+    // (according to MSDN) because the flag OFN_NOCHANGEDIR has no effect.
+    // If the user did not specify wxFD_CHANGE_DIR let's restore the
+    // current working directory to what it was before the dialog was shown.
+    if (msw_flags & OFN_NOCHANGEDIR)
+        cwdOrig.value = wxGetCwd();
 
     //== Execute FileDialog >>=================================================
 
     if ( !ShowCommFileDialog(&of, m_windowStyle) )
         return wxID_CANCEL;
 
-    // GetOpenFileName will always change the current working directory on
-    // (according to MSDN) "Windows NT 4.0/2000/XP" because the flag
-    // OFN_NOCHANGEDIR has no effect.  If the user did not specify
-    // wxFD_CHANGE_DIR let's restore the current working directory to what it
-    // was before the dialog was shown.
-    if ( msw_flags & OFN_NOCHANGEDIR )
-    {
-        wxSetWorkingDirectory(cwdOrig);
-    }
-
     m_fileNames.Empty();
 
     if ( ( HasFdFlag(wxFD_MULTIPLE) ) &&
-#if defined(OFN_EXPLORER)
          ( fileNameBuffer[of.nFileOffset-1] == wxT('\0') )
-#else
-         ( fileNameBuffer[of.nFileOffset-1] == wxT(' ') )
-#endif // OFN_EXPLORER
        )
     {
-#if defined(OFN_EXPLORER)
         m_dir = fileNameBuffer;
         i = of.nFileOffset;
         m_fileName = &fileNameBuffer[i];
@@ -696,15 +643,6 @@ int wxFileDialog::ShowModal()
             m_fileNames.Add(&fileNameBuffer[i]);
             i += wxStrlen(&fileNameBuffer[i]) + 1;
         }
-#else
-        wxStringTokenizer toke(fileNameBuffer, wxT(" \t\r\n"));
-        m_dir = toke.GetNextToken();
-        m_fileName = toke.GetNextToken();
-        m_fileNames.Add(m_fileName);
-
-        while (toke.HasMoreTokens())
-            m_fileNames.Add(toke.GetNextToken());
-#endif // OFN_EXPLORER
 
         m_path = m_dir;
         if ( m_dir.Last() != wxT('\\') )

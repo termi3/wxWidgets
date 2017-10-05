@@ -66,10 +66,6 @@
     #endif
 #endif
 
-#ifndef ACO_UPDOWNKEYDROPSLIST
-    #define ACO_UPDOWNKEYDROPSLIST 0x20
-#endif
-
 #ifndef SHACF_FILESYS_ONLY
     #define SHACF_FILESYS_ONLY 0x00000010
 #endif
@@ -83,9 +79,6 @@
 // above.
 #include <initguid.h>
 
-namespace
-{
-
 // Normally this interface and its IID are defined in shobjidl.h header file
 // included in the platform SDK but MinGW and Cygwin don't have it so redefine
 // the interface ourselves and, as long as we do it all, do it for all
@@ -97,6 +90,9 @@ public:
     virtual HRESULT wxSTDCALL GetDropDownStatus(DWORD *, LPWSTR *) = 0;
     virtual HRESULT wxSTDCALL ResetEnumerator() = 0;
 };
+
+namespace
+{
 
 DEFINE_GUID(wxIID_IAutoCompleteDropDown,
     0x3cd141f4, 0x3c6a, 0x11d2, 0xbc, 0xaa, 0x00, 0xc0, 0x4f, 0xd9, 0x29, 0xdb);
@@ -175,7 +171,7 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE Next(ULONG celt,
                                            LPOLESTR *rgelt,
-                                           ULONG *pceltFetched)
+                                           ULONG *pceltFetched) wxOVERRIDE
     {
         if ( !rgelt || (!pceltFetched && celt > 1) )
             return E_POINTER;
@@ -217,7 +213,7 @@ public:
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Skip(ULONG celt)
+    virtual HRESULT STDMETHODCALLTYPE Skip(ULONG celt) wxOVERRIDE
     {
         if ( !celt )
             return E_INVALIDARG;
@@ -239,7 +235,7 @@ public:
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Reset()
+    virtual HRESULT STDMETHODCALLTYPE Reset() wxOVERRIDE
     {
         CSLock lock(m_csRestart);
 
@@ -248,7 +244,7 @@ public:
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Clone(IEnumString **ppEnum)
+    virtual HRESULT STDMETHODCALLTYPE Clone(IEnumString **ppEnum) wxOVERRIDE
     {
         if ( !ppEnum )
             return E_POINTER;

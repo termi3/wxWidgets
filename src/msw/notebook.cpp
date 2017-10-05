@@ -750,15 +750,18 @@ int wxNotebook::HitTest(const wxPoint& pt, long *flags) const
         *flags = 0;
 
         if ((hitTestInfo.flags & TCHT_NOWHERE) == TCHT_NOWHERE)
+        {
+            wxASSERT( item == wxNOT_FOUND );
             *flags |= wxBK_HITTEST_NOWHERE;
-        if ((hitTestInfo.flags & TCHT_ONITEM) == TCHT_ONITEM)
+            if ( GetPageSize().Contains(pt) )
+                *flags |= wxBK_HITTEST_ONPAGE;
+        }
+        else if ((hitTestInfo.flags & TCHT_ONITEM) == TCHT_ONITEM)
             *flags |= wxBK_HITTEST_ONITEM;
-        if ((hitTestInfo.flags & TCHT_ONITEMICON) == TCHT_ONITEMICON)
+        else if ((hitTestInfo.flags & TCHT_ONITEMICON) == TCHT_ONITEMICON)
             *flags |= wxBK_HITTEST_ONICON;
-        if ((hitTestInfo.flags & TCHT_ONITEMLABEL) == TCHT_ONITEMLABEL)
+        else if ((hitTestInfo.flags & TCHT_ONITEMLABEL) == TCHT_ONITEMLABEL)
             *flags |= wxBK_HITTEST_ONLABEL;
-        if ( item == wxNOT_FOUND && GetPageSize().Contains(pt) )
-            *flags |= wxBK_HITTEST_ONPAGE;
     }
 
     return item;
@@ -1099,27 +1102,20 @@ void wxNotebook::OnNavigationKey(wxNavigationKeyEvent& event)
 
 #if wxUSE_UXTHEME
 
-bool wxNotebook::DoDrawBackground(WXHDC hDC, wxWindow *child)
+WXHBRUSH wxNotebook::QueryBgBitmap()
 {
-    wxUxThemeHandle theme(child ? child : this, L"TAB");
-    if ( !theme )
-        return false;
-
-    // get the notebook client rect (we're not interested in drawing tabs
-    // themselves)
     wxRect r = GetPageSize();
     if ( r.IsEmpty() )
-        return false;
+        return 0;
+
+    wxUxThemeHandle theme(this, L"TAB");
+    if ( !theme )
+        return 0;
 
     RECT rc;
     wxCopyRectToRECT(r, rc);
 
-    // map rect to the coords of the window we're drawing in
-    if ( child )
-        ::MapWindowPoints(GetHwnd(), GetHwndOf(child), (POINT *)&rc, 2);
-
-    // we have the content area (page size), but we need to draw all of the
-    // background for it to be aligned correctly
+    WindowHDC hDC(GetHwnd());
     wxUxThemeEngine::Get()->GetThemeBackgroundExtent
                             (
                                 theme,
@@ -1129,33 +1125,22 @@ bool wxNotebook::DoDrawBackground(WXHDC hDC, wxWindow *child)
                                 &rc,
                                 &rc
                             );
-    wxUxThemeEngine::Get()->DrawThemeBackground
-                            (
-                                theme,
-                                (HDC) hDC,
-                                9 /* TABP_PANE */,
-                                0,
-                                &rc,
-                                NULL
-                            );
 
-    return true;
-}
-
-WXHBRUSH wxNotebook::QueryBgBitmap()
-{
-    wxRect r = GetPageSize();
-    if ( r.IsEmpty() )
-        return 0;
-
-    WindowHDC hDC(GetHwnd());
     MemoryHDC hDCMem(hDC);
-    CompatibleBitmap hBmp(hDC, r.x + r.width, r.y + r.height);
+    CompatibleBitmap hBmp(hDC, rc.right, rc.bottom);
 
-    SelectInHDC selectBmp(hDCMem, hBmp);
-
-    if ( !DoDrawBackground((WXHDC)(HDC)hDCMem) )
-        return 0;
+    {
+        SelectInHDC selectBmp(hDCMem, hBmp);
+        wxUxThemeEngine::Get()->DrawThemeBackground
+                                (
+                                    theme,
+                                    hDCMem,
+                                    9 /* TABP_PANE */,
+                                    0,
+                                    &rc,
+                                    NULL
+                                );
+    } // deselect bitmap from the memory HDC before using it
 
     return (WXHBRUSH)::CreatePatternBrush(hBmp);
 }
@@ -1177,31 +1162,55 @@ void wxNotebook::UpdateBgBrush()
 
 bool wxNotebook::MSWPrintChild(WXHDC hDC, wxWindow *child)
 {
-    // solid background colour overrides themed background drawing
-    if ( !UseBgCol() && DoDrawBackground(hDC, child) )
-        return true;
+    const wxRect r = GetPageSize();
+    if ( r.IsEmpty() )
+        return false;
+
+    RECT rc;
+    wxCopyRectToRECT(r, rc);
+
+    // map rect to the coords of the window we're drawing in
+    if ( child )
+        ::MapWindowPoints(GetHwnd(), GetHwndOf(child), (POINT *)&rc, 2);
 
     // If we're using a solid colour (for example if we've switched off
     // theming for this notebook), paint it
     if (UseBgCol())
     {
-        wxRect r = GetPageSize();
-        if ( r.IsEmpty() )
-            return false;
-
-        RECT rc;
-        wxCopyRectToRECT(r, rc);
-
-        // map rect to the coords of the window we're drawing in
-        if ( child )
-            ::MapWindowPoints(GetHwnd(), GetHwndOf(child), (POINT *)&rc, 2);
-
         wxBrush brush(GetBackgroundColour());
         HBRUSH hbr = GetHbrushOf(brush);
 
         ::FillRect((HDC) hDC, &rc, hbr);
 
         return true;
+    }
+    else // No solid background colour, try to use themed background.
+    {
+        wxUxThemeHandle theme(child, L"TAB");
+        if ( theme )
+        {
+            // we have the content area (page size), but we need to draw all of the
+            // background for it to be aligned correctly
+            wxUxThemeEngine::Get()->GetThemeBackgroundExtent
+                                    (
+                                        theme,
+                                        (HDC) hDC,
+                                        9 /* TABP_PANE */,
+                                        0,
+                                        &rc,
+                                        &rc
+                                    );
+            wxUxThemeEngine::Get()->DrawThemeBackground
+                                    (
+                                        theme,
+                                        (HDC) hDC,
+                                        9 /* TABP_PANE */,
+                                        0,
+                                        &rc,
+                                        NULL
+                                    );
+            return true;
+        }
     }
 
     return wxNotebookBase::MSWPrintChild(hDC, child);

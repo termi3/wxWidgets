@@ -165,7 +165,7 @@ private:
 class MyFrame: public wxFrame
 {
 public:
-    MyFrame(wxFrame *frame, const wxChar *title, int x, int y, int w, int h);
+    MyFrame(const wxString& title, int x, int y);
 
     void OnQuit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
@@ -455,9 +455,7 @@ bool MyApp::OnInit()
         return false;
 
     // Create the main frame window
-    MyFrame *frame = new MyFrame((wxFrame *) NULL,
-            wxT("Text wxWidgets sample"), 50, 50, 700, 550);
-    frame->SetSizeHints( 500, 400 );
+    MyFrame *frame = new MyFrame(wxS("Text wxWidgets sample"), 50, 50);
 
     wxMenu *file_menu = new wxMenu;
     file_menu->Append(TEXT_SAVE, wxT("&Save file\tCtrl-S"),
@@ -590,7 +588,7 @@ bool MyTextCtrl::ms_logClip = false;
 void MyTextCtrl::LogKeyEvent(const wxChar *name, wxKeyEvent& event) const
 {
     wxString key;
-    long keycode = event.GetKeyCode();
+    const int keycode = event.GetKeyCode();
     {
         switch ( keycode )
         {
@@ -692,15 +690,32 @@ void MyTextCtrl::LogKeyEvent(const wxChar *name, wxKeyEvent& event) const
             case WXK_NUMPAD_SEPARATOR: key = wxT("NUMPAD_SEPARATOR"); break;
             case WXK_NUMPAD_SUBTRACT: key = wxT("NUMPAD_SUBTRACT"); break;
             case WXK_NUMPAD_DECIMAL: key = wxT("NUMPAD_DECIMAL"); break;
+            case WXK_BROWSER_BACK: key = wxT("BROWSER_BACK"); break;
+            case WXK_BROWSER_FORWARD: key = wxT("BROWSER_FORWARD"); break;
+            case WXK_BROWSER_REFRESH: key = wxT("BROWSER_REFRESH"); break;
+            case WXK_BROWSER_STOP: key = wxT("BROWSER_STOP"); break;
+            case WXK_BROWSER_SEARCH: key = wxT("BROWSER_SEARCH"); break;
+            case WXK_BROWSER_FAVORITES: key = wxT("BROWSER_FAVORITES"); break;
+            case WXK_BROWSER_HOME: key = wxT("BROWSER_HOME"); break;
+            case WXK_VOLUME_MUTE: key = wxT("VOLUME_MUTE"); break;
+            case WXK_VOLUME_DOWN: key = wxT("VOLUME_DOWN"); break;
+            case WXK_VOLUME_UP: key = wxT("VOLUME_UP"); break;
+            case WXK_MEDIA_NEXT_TRACK: key = wxT("MEDIA_NEXT_TRACK"); break;
+            case WXK_MEDIA_PREV_TRACK: key = wxT("MEDIA_PREV_TRACK"); break;
+            case WXK_MEDIA_STOP: key = wxT("MEDIA_STOP"); break;
+            case WXK_MEDIA_PLAY_PAUSE: key = wxT("MEDIA_PLAY_PAUSE"); break;
+            case WXK_LAUNCH_MAIL: key = wxT("LAUNCH_MAIL"); break;
+            case WXK_LAUNCH_APP1: key = wxT("LAUNCH_APP1"); break;
+            case WXK_LAUNCH_APP2: key = wxT("LAUNCH_APP2"); break;
 
             default:
             {
-               if ( wxIsprint((int)keycode) )
-                   key.Printf(wxT("'%c'"), (char)keycode);
+               if ( wxIsprint(keycode) )
+                   key.Printf(wxT("'%c'"), keycode);
                else if ( keycode > 0 && keycode < 27 )
                    key.Printf(_("Ctrl-%c"), wxT('A') + keycode - 1);
                else
-                   key.Printf(wxT("unknown (%ld)"), keycode);
+                   key.Printf(wxT("unknown (%d)"), keycode);
             }
         }
     }
@@ -796,10 +811,31 @@ void MyTextCtrl::OnMouseEvent(wxMouseEvent& ev)
 
         long pos;
         wxTextCtrlHitTestResult rc = HitTest(ev.GetPosition(), &pos);
-        if ( rc != wxTE_HT_UNKNOWN )
+        wxString where;
+        switch ( rc )
         {
-            msg << wxT("at position ") << pos << wxT(' ');
+            case wxTE_HT_UNKNOWN:
+                break;
+
+            case wxTE_HT_BEFORE:
+                where = "before";
+                break;
+
+            case wxTE_HT_ON_TEXT:
+                where = "at";
+                break;
+
+            case wxTE_HT_BELOW:
+                where = "below";
+                break;
+
+            case wxTE_HT_BEYOND:
+                where = "beyond";
+                break;
         }
+
+        if ( !where.empty() )
+            msg << where << " position " << pos << " ";
 
         msg << wxT("[Flags: ")
             << GetChar( ev.LeftIsDown(), wxT('1') )
@@ -1085,6 +1121,7 @@ MyPanel::MyPanel( wxFrame *frame, int x, int y, int w, int h )
 
     m_password = new MyTextCtrl( this, wxID_ANY, wxT(""),
       wxPoint(10,50), wxSize(140,wxDefaultCoord), wxTE_PASSWORD );
+    m_password->SetHint("Don't use 12345 here");
 
     m_limited = new MyTextCtrl(this, wxID_ANY, "",
                               wxPoint(10, 90), wxDefaultSize);
@@ -1444,8 +1481,8 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_IDLE(MyFrame::OnIdle)
 wxEND_EVENT_TABLE()
 
-MyFrame::MyFrame(wxFrame *frame, const wxChar *title, int x, int y, int w, int h)
-       : wxFrame(frame, wxID_ANY, title, wxPoint(x, y), wxSize(w, h) )
+MyFrame::MyFrame(const wxString& title, int x, int y)
+       : wxFrame(NULL, wxID_ANY, title, wxPoint(x, y))
 {
     SetIcon(wxICON(sample));
 
@@ -1454,6 +1491,7 @@ MyFrame::MyFrame(wxFrame *frame, const wxChar *title, int x, int y, int w, int h
 #endif // wxUSE_STATUSBAR
 
     m_panel = new MyPanel( this, 10, 10, 300, 100 );
+    m_panel->GetSizer()->Fit(this);
 }
 
 void MyFrame::OnQuit (wxCommandEvent& WXUNUSED(event) )

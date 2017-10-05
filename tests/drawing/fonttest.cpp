@@ -36,7 +36,9 @@ GraphicsContextDrawingTestCase::ms_drawingFontTc = {
 void GraphicsContextDrawingTestCase::DoFontDrawings (wxGraphicsContext *gc)
 {
 #ifdef __WXGTK__
+    wxGCC_WARNING_SUPPRESS(deprecated-declarations)
     g_type_init();
+    wxGCC_WARNING_RESTORE()
 #endif
 
     // This test is expected to treat about fonts/texts. Fonts are a bit special
@@ -58,7 +60,7 @@ void GraphicsContextDrawingTestCase::DoFontDrawings (wxGraphicsContext *gc)
     gc->DrawText( wxT("That is text"), 20, 10, wxDegToRad(-45), gbTextBackground );
 
     // use wxSWISS_FONT and not wxNORMAL_FONT as the latter can't be rotated
-    // under Win9x (it is not TrueType)
+    // (it is not TrueType)
     gc->SetFont( wxFont(wxFontInfo(12).Family(wxFONTFAMILY_SWISS)), *wxBLACK );
 
     wxString text;

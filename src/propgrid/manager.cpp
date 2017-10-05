@@ -1077,9 +1077,13 @@ bool wxPropertyGridManager::IsAnyModified() const
 
 bool wxPropertyGridManager::IsPageModified( size_t index ) const
 {
-    if ( m_arrPages[index]->GetStatePtr()->m_anyModified )
-        return true;
-    return false;
+    wxCHECK_MSG( index < GetPageCount(), false, wxS("Invalid page index") );
+
+#if WXWIN_COMPATIBILITY_3_0
+    return m_arrPages[index]->GetStatePtr()->m_anyModified != (unsigned char)false;
+#else
+    return m_arrPages[index]->GetStatePtr()->m_anyModified;
+#endif
 }
 
 // -----------------------------------------------------------------------
@@ -1409,6 +1413,7 @@ void wxPropertyGridManager::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
     if ( HasExtraStyle(wxPG_EX_TOOLBAR_SEPARATOR) )
     {
+#if wxUSE_TOOLBAR
         if (m_pToolbar && m_pPropGrid)
         {
             wxPen marginPen(m_pPropGrid->GetMarginColour());
@@ -1417,6 +1422,7 @@ void wxPropertyGridManager::OnPaint( wxPaintEvent& WXUNUSED(event) )
             int y = m_pPropGrid->GetPosition().y-1;
             dc.DrawLine(0, y, GetClientSize().x, y);
         }
+#endif // wxUSE_TOOLBAR
     }
 
     // Repaint splitter and any other description box decorations

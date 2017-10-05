@@ -56,16 +56,18 @@
 
 class wxSTCTimer : public wxTimer {
 public:
-    wxSTCTimer(ScintillaWX* swx) {
+    wxSTCTimer(ScintillaWX* swx, ScintillaWX::TickReason reason) {
         m_swx = swx;
+        m_reason = reason;
     }
 
     void Notify() wxOVERRIDE {
-        m_swx->DoTick();
+        m_swx->TickFor(m_reason);
     }
 
 private:
     ScintillaWX* m_swx;
+    ScintillaWX::TickReason m_reason;
 };
 
 
@@ -263,10 +265,19 @@ ScintillaWX::ScintillaWX(wxStyledTextCtrl* win) {
 #endif
 #endif // wxHAVE_STC_RECT_FORMAT
 
+    //A timer is needed for each member of TickReason enum except tickPlatform
+    timers[tickCaret] = new wxSTCTimer(this,tickCaret);
+    timers[tickScroll] = new wxSTCTimer(this,tickScroll);
+    timers[tickWiden] = new wxSTCTimer(this,tickWiden);
+    timers[tickDwell] = new wxSTCTimer(this,tickDwell);
 }
 
 
 ScintillaWX::~ScintillaWX() {
+    for ( TimersHash::iterator i=timers.begin(); i!=timers.end(); ++i ) {
+        delete i->second;
+    }
+    timers.clear();
     Finalise();
 }
 
@@ -306,7 +317,6 @@ void ScintillaWX::Initialise() {
 
 void ScintillaWX::Finalise() {
     ScintillaBase::Finalise();
-    SetTicking(false);
     SetIdle(false);
     DestroySystemCaret();
 }
@@ -357,25 +367,6 @@ bool ScintillaWX::SetIdle(bool on) {
 }
 
 
-void ScintillaWX::SetTicking(bool on) {
-    wxSTCTimer* steTimer;
-    if (timer.ticking != on) {
-        timer.ticking = on;
-        if (timer.ticking) {
-            steTimer = new wxSTCTimer(this);
-            steTimer->Start(timer.tickSize);
-            timer.tickerID = steTimer;
-        } else {
-            steTimer = (wxSTCTimer*)timer.tickerID;
-            steTimer->Stop();
-            delete steTimer;
-            timer.tickerID = 0;
-        }
-    }
-    timer.ticksToWait = caret.period;
-}
-
-
 void ScintillaWX::SetMouseCapture(bool on) {
     if (mouseDownCaptures) {
         if (on && !capturedMouse)
@@ -421,7 +412,7 @@ const int H_SCROLL_STEP = 20;
 bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
     bool modified = false;
 
-    int vertEnd = nMax;
+    int vertEnd = nMax+1;
     if (!verticalScrollBarVisible)
         vertEnd = 0;
 
@@ -431,7 +422,7 @@ bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
         int  sbThumb  = stc->GetScrollThumb(wxVERTICAL);
         int  sbPos    = stc->GetScrollPos(wxVERTICAL);
         if (sbMax != vertEnd || sbThumb != nPage) {
-            stc->SetScrollbar(wxVERTICAL, sbPos, nPage, vertEnd+1);
+            stc->SetScrollbar(wxVERTICAL, sbPos, nPage, vertEnd);
             modified = true;
         }
     }
@@ -440,7 +431,7 @@ bool ScintillaWX::ModifyScrollBars(int nMax, int nPage) {
         int  sbPage   = stc->m_vScrollBar->GetPageSize();
         int  sbPos    = stc->m_vScrollBar->GetThumbPosition();
         if (sbMax != vertEnd || sbPage != nPage) {
-            stc->m_vScrollBar->SetScrollbar(sbPos, nPage, vertEnd+1, nPage);
+            stc->m_vScrollBar->SetScrollbar(sbPos, nPage, vertEnd, nPage);
             modified = true;
         }
     }
@@ -544,14 +535,14 @@ void ScintillaWX::Paste() {
         evt.SetString(text);
         stc->GetEventHandler()->ProcessEvent(evt);
 
-        wxWX2MBbuf buf = (wxWX2MBbuf)wx2stc(evt.GetString());
+        const wxCharBuffer buf(wx2stc(evt.GetString()));
 
 #if wxUSE_UNICODE
         // free up the old character buffer in case the text is real big
         data.SetText(wxEmptyString);
         text = wxEmptyString;
 #endif
-        int len = strlen(buf);
+        const size_t len = buf.length();
         SelectionPosition selStart = sel.IsRectangular() ?
             sel.Rectangular().Start() :
             sel.Range(sel.Main()).Start();
@@ -741,6 +732,36 @@ bool ScintillaWX::DestroySystemCaret() {
 #endif
 }
 
+bool ScintillaWX::FineTickerAvailable() {
+    return true;
+}
+
+bool ScintillaWX::FineTickerRunning(TickReason reason) {
+    bool running = false;
+    TimersHash::iterator i = timers.find(reason);
+    wxASSERT_MSG( i != timers.end(), "At least one TickReason is missing a timer.");
+    if ( i != timers.end() ) {
+        running = i->second->IsRunning();
+    }
+    return running;
+}
+
+void ScintillaWX::FineTickerStart(TickReason reason, int millis,
+                                  int WXUNUSED(tolerance)) {
+    TimersHash::iterator i = timers.find(reason);
+    wxASSERT_MSG( i != timers.end(), "At least one TickReason is missing a timer." );
+    if ( i != timers.end() ) {
+        i->second->Start(millis);
+    }
+}
+
+void ScintillaWX::FineTickerCancel(TickReason reason) {
+    TimersHash::iterator i = timers.find(reason);
+    wxASSERT_MSG( i != timers.end(), "At least one TickReason is missing a timer." );
+    if ( i != timers.end() ) {
+        i->second->Stop();
+    }
+}
 
 //----------------------------------------------------------------------
 
@@ -800,6 +821,11 @@ sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
             LexerManager::GetInstance()->Load((const char*)lParam);
             break;
 #endif
+      case SCI_GETDIRECTFUNCTION:
+            return reinterpret_cast<sptr_t>(DirectFunction);
+
+      case SCI_GETDIRECTPOINTER:
+            return reinterpret_cast<sptr_t>(this);
 
       default:
           return ScintillaBase::WndProc(iMessage, wParam, lParam);
@@ -966,7 +992,6 @@ void ScintillaWX::DoLoseFocus(){
     SetFocusState(false);
     focusEvent = false;
     DestroySystemCaret();
-    SetTicking(false);
 }
 
 void ScintillaWX::DoGainFocus(){
@@ -975,7 +1000,6 @@ void ScintillaWX::DoGainFocus(){
     focusEvent = false;
     DestroySystemCaret();
     CreateSystemCaret();
-    SetTicking(true);
 }
 
 void ScintillaWX::DoSysColourChange() {
@@ -984,6 +1008,15 @@ void ScintillaWX::DoSysColourChange() {
 
 void ScintillaWX::DoLeftButtonDown(Point pt, unsigned int curTime, bool shift, bool ctrl, bool alt) {
     ButtonDown(pt, curTime, shift, ctrl, alt);
+}
+
+void ScintillaWX::DoRightButtonDown(Point pt, unsigned int curTime, bool shift, bool ctrl, bool alt) {
+    if (!PointInSelection(pt)) {
+        CancelModes();
+        SetEmptySelection(PositionFromLocation(pt));
+    }
+
+    RightButtonDownWithModifiers(pt, curTime, ModifierFlags(shift, ctrl, alt));
 }
 
 void ScintillaWX::DoLeftButtonUp(Point pt, unsigned int curTime, bool ctrl) {
@@ -1013,8 +1046,8 @@ void ScintillaWX::DoMiddleButtonUp(Point pt) {
     if (gotData) {
         wxString   text = wxTextBuffer::Translate(data.GetText(),
                                                   wxConvertEOLMode(pdoc->eolMode));
-        wxWX2MBbuf buf = (wxWX2MBbuf)wx2stc(text);
-        int        len = strlen(buf);
+        const wxCharBuffer buf(wx2stc(text));
+        const size_t len = buf.length();
         int caretMain = sel.MainCaret();
         pdoc->InsertString(caretMain, buf, len);
         SetEmptySelection(caretMain + len);
@@ -1037,8 +1070,8 @@ void ScintillaWX::DoAddChar(int key) {
     wxChar wszChars[2];
     wszChars[0] = (wxChar)key;
     wszChars[1] = 0;
-    wxWX2MBbuf buf = (wxWX2MBbuf)wx2stc(wszChars);
-    AddCharUTF((char*)buf.data(), strlen(buf));
+    const wxCharBuffer buf(wx2stc(wszChars));
+    AddCharUTF(buf, buf.length());
 #else
     AddChar((char)key);
 #endif
@@ -1129,13 +1162,17 @@ void ScintillaWX::DoCommand(int ID) {
 }
 
 
-void ScintillaWX::DoContextMenu(Point pt) {
-    if (displayPopupMenu)
+bool ScintillaWX::DoContextMenu(Point pt) {
+    if (ShouldDisplayPopup(pt))
+    {
         ContextMenu(pt);
+        return true;
+    }
+    return false;
 }
 
 void ScintillaWX::DoOnListBox() {
-    AutoCompleteCompleted();
+    AutoCompleteCompleted(0, SC_AC_COMMAND);
 }
 
 
@@ -1244,6 +1281,11 @@ void ScintillaWX::SetUseAntiAliasing(bool useAA) {
 
 bool ScintillaWX::GetUseAntiAliasing() {
     return vs.extraFontFlag != 0;
+}
+
+sptr_t ScintillaWX::DirectFunction(
+    ScintillaWX* swx, unsigned int iMessage, uptr_t wParam, sptr_t lParam) {
+    return swx->WndProc(iMessage, wParam, lParam);
 }
 
 //----------------------------------------------------------------------

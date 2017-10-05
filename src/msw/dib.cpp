@@ -64,10 +64,9 @@ static inline WORD GetNumberOfColours(WORD bitsPerPixel)
 // wrapper around ::GetObject() for DIB sections
 static inline bool GetDIBSection(HBITMAP hbmp, DIBSECTION *ds)
 {
-    // note that at least under Win9x (this doesn't seem to happen under Win2K
-    // but this doesn't mean anything, of course), GetObject() may return
-    // sizeof(DIBSECTION) for a bitmap which is *not* a DIB section and the way
-    // to check for it is by looking at the bits pointer
+    // note that GetObject() may return sizeof(DIBSECTION) for a bitmap
+    // which is *not* a DIB section and the way to check for it is
+    // by looking at the bits pointer
     return ::GetObject(hbmp, sizeof(DIBSECTION), ds) == sizeof(DIBSECTION) &&
                 ds->dsBm.bmBits;
 }
@@ -485,8 +484,8 @@ HGLOBAL wxDIB::ConvertFromBitmap(HBITMAP hbmp)
     HGLOBAL hDIB = ::GlobalAlloc(GMEM_MOVEABLE, size);
     if ( !hDIB )
     {
-        // this is an error which does risk to happen especially under Win9x
-        // and which the user may understand so let him know about it
+        // this is an error which the user may understand so let him
+        // know about it
         wxLogError(_("Failed to allocate %luKb of memory for bitmap data."),
                    (unsigned long)(size / 1024));
 
@@ -509,7 +508,7 @@ HGLOBAL wxDIB::ConvertFromBitmap(HBITMAP hbmp)
 // palette support
 // ----------------------------------------------------------------------------
 
-#if wxUSE_PALETTE
+#if defined(__WXMSW__) && wxUSE_PALETTE
 
 wxPalette *wxDIB::CreatePalette() const
 {
@@ -582,7 +581,7 @@ wxPalette *wxDIB::CreatePalette() const
     return palette;
 }
 
-#endif // wxUSE_PALETTE
+#endif // defined(__WXMSW__) && wxUSE_PALETTE
 
 // ----------------------------------------------------------------------------
 // wxImage support
@@ -676,7 +675,7 @@ bool wxDIB::Create(const wxImage& image, PixelFormat pf)
     return true;
 }
 
-wxImage wxDIB::ConvertToImage() const
+wxImage wxDIB::ConvertToImage(ConversionFlags flags) const
 {
     wxCHECK_MSG( IsOk(), wxNullImage,
                     wxT("can't convert invalid DIB to wxImage") );
@@ -776,7 +775,7 @@ wxImage wxDIB::ConvertToImage() const
     if ( hasOpaque && hasTransparent )
         hasAlpha = true;
 
-    if ( !hasAlpha && image.HasAlpha() )
+    if ( !hasAlpha && image.HasAlpha() && flags == Convert_AlphaAuto )
         image.ClearAlpha();
 
     return image;

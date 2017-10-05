@@ -9,7 +9,11 @@
 // For compilers that support precompilation, includes "wx.h".
 #include "wx/wxprec.h"
 
-#if (wxUSE_DATAVIEWCTRL != 0) && (!defined(wxUSE_GENERICDATAVIEWCTRL) || (wxUSE_GENERICDATAVIEWCTRL == 0))
+#if wxUSE_DATAVIEWCTRL
+
+#include "wx/dataview.h"
+
+#ifndef wxUSE_GENERICDATAVIEWCTRL
 
 #include <limits>
 
@@ -18,9 +22,6 @@
     #include "wx/settings.h"
     #include "wx/dcclient.h"
     #include "wx/icon.h"
-#endif
-#if wxOSX_USE_CARBON
-#include "wx/osx/carbon/dataview.h"
 #endif
 
 #include "wx/osx/core/dataview.h"
@@ -125,13 +126,8 @@ bool wxOSXDataViewModelNotifier::ItemChanged(wxDataViewItem const& item)
   wxCHECK_MSG(GetOwner() != NULL,false,"Owner not initialized.");
   if (m_DataViewCtrlPtr->GetDataViewPeer()->Update(GetOwner()->GetParent(item),item))
   {
-   // sent the equivalent wxWidget event:
-    wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED,m_DataViewCtrlPtr->GetId());
-
-    dataViewEvent.SetEventObject(m_DataViewCtrlPtr);
-    dataViewEvent.SetModel(m_DataViewCtrlPtr->GetModel());
-    dataViewEvent.SetItem(item);
-   // sent the equivalent wxWidget event:
+   // send the equivalent wxWidgets event:
+    wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED, m_DataViewCtrlPtr, item);
     m_DataViewCtrlPtr->HandleWindowEvent(dataViewEvent);
    // row height may have to be adjusted:
     AdjustRowHeight(item);
@@ -147,16 +143,11 @@ bool wxOSXDataViewModelNotifier::ItemsChanged(wxDataViewItemArray const& items)
 {
   size_t const noOfItems = items.GetCount();
 
-  wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED,m_DataViewCtrlPtr->GetId());
-
-
-  dataViewEvent.SetEventObject(m_DataViewCtrlPtr);
-  dataViewEvent.SetModel(m_DataViewCtrlPtr->GetModel());
   for (size_t indexItem=0; indexItem<noOfItems; ++indexItem)
     if (m_DataViewCtrlPtr->GetDataViewPeer()->Update(GetOwner()->GetParent(items[indexItem]),items[indexItem]))
     {
-     // send for all changed items a wxWidget event:
-      dataViewEvent.SetItem(items[indexItem]);
+     // send for all changed items a wxWidgets event:
+      wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED,m_DataViewCtrlPtr,items[indexItem]);
       m_DataViewCtrlPtr->HandleWindowEvent(dataViewEvent);
     }
     else
@@ -214,13 +205,9 @@ bool wxOSXDataViewModelNotifier::ValueChanged(wxDataViewItem const& item, unsign
   wxCHECK_MSG(GetOwner() != NULL,false,"Owner not initialized.");
   if (m_DataViewCtrlPtr->GetDataViewPeer()->Update(GetOwner()->GetParent(item),item))
   {
-    wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED,m_DataViewCtrlPtr->GetId());
+    wxDataViewEvent dataViewEvent(wxEVT_DATAVIEW_ITEM_VALUE_CHANGED, m_DataViewCtrlPtr, m_DataViewCtrlPtr->GetColumn(col), item);
 
-    dataViewEvent.SetEventObject(m_DataViewCtrlPtr);
-    dataViewEvent.SetModel(m_DataViewCtrlPtr->GetModel());
-    dataViewEvent.SetColumn(col);
-    dataViewEvent.SetItem(item);
-   // send the equivalent wxWidget event:
+   // send the equivalent wxWidgets event:
     m_DataViewCtrlPtr->HandleWindowEvent(dataViewEvent);
 
     AdjustAutosizedColumns();
@@ -523,9 +510,9 @@ void wxDataViewCtrl::EnsureVisible(wxDataViewItem const& item, wxDataViewColumn 
   }
 }
 
-void wxDataViewCtrl::Expand(wxDataViewItem const& item)
+void wxDataViewCtrl::DoExpand(wxDataViewItem const& item)
 {
-  return GetDataViewPeer()->Expand(item);
+  return GetDataViewPeer()->DoExpand(item);
 }
 
 bool wxDataViewCtrl::IsExpanded( const wxDataViewItem & item ) const
@@ -581,6 +568,12 @@ void wxDataViewCtrl::HitTest(wxPoint const& point, wxDataViewItem& item, wxDataV
   return GetDataViewPeer()->HitTest(point,item,columnPtr);
 }
 
+bool wxDataViewCtrl::SetRowHeight(int rowHeight)
+{
+  GetDataViewPeer()->SetRowHeight(rowHeight);
+  return true;
+}
+
 bool wxDataViewCtrl::IsSelected(wxDataViewItem const& item) const
 {
   return GetDataViewPeer()->IsSelected(item);
@@ -602,6 +595,10 @@ void wxDataViewCtrl::SelectAll()
 
 void wxDataViewCtrl::SetSelections(wxDataViewItemArray const& sel)
 {
+    wxDataViewWidgetImpl* dataViewWidgetPtr(GetDataViewPeer());
+
+    dataViewWidgetPtr->UnselectAll();
+
     size_t const noOfSelections = sel.GetCount();
 
     size_t i;
@@ -621,8 +618,6 @@ void wxDataViewCtrl::SetSelections(wxDataViewItemArray const& sel)
     }
 
    // finally select the items:
-    wxDataViewWidgetImpl* dataViewWidgetPtr(GetDataViewPeer()); // variable definition for abbreviational purposes
-
     for (i=0; i<noOfSelections; ++i)
       dataViewWidgetPtr->Select(sel[i]);
 }
@@ -736,52 +731,6 @@ wxSize wxDataViewCtrl::DoGetBestSize() const
 void wxDataViewCtrl::OnMouse(wxMouseEvent& event)
 {
     event.Skip();
-
-#if wxOSX_USE_CARBON
-    if (GetModel() == NULL)
-        return;
-
-    wxMacDataViewDataBrowserListViewControlPointer MacDataViewListCtrlPtr(dynamic_cast<wxMacDataViewDataBrowserListViewControlPointer>(GetPeer()));
-
-    int NoOfChildren;
-    wxDataViewItemArray items;
-    NoOfChildren = GetModel()->GetChildren( wxDataViewItem(), items);
-    if (NoOfChildren == 0)
-       return;
-    wxDataViewItem firstChild = items[0];
-
-    UInt16 headerHeight = 0;
-    MacDataViewListCtrlPtr->GetHeaderButtonHeight(&headerHeight);
-
-
-    if (event.GetY() < headerHeight)
-    {
-       unsigned int col_count = GetColumnCount();
-       unsigned int col;
-       for (col = 0; col < col_count; col++)
-       {
-           wxDataViewColumn *column = GetColumn( col );
-           if (column->IsHidden())
-              continue;
-
-           Rect itemrect;
-           ::GetDataBrowserItemPartBounds( MacDataViewListCtrlPtr->GetControlRef(),
-              reinterpret_cast<DataBrowserItemID>(firstChild.GetID()), column->GetNativeData()->GetPropertyID(),
-              kDataBrowserPropertyEnclosingPart, &itemrect );
-
-           if (abs( event.GetX() - itemrect.right) < 3)
-           {
-               if (column->GetFlags() & wxDATAVIEW_COL_RESIZABLE)
-                  SetCursor( wxCursor( wxCURSOR_SIZEWE ) );
-               else
-                  SetCursor( *wxSTANDARD_CURSOR );
-               return;
-           }
-       }
-
-    }
-    SetCursor( *wxSTANDARD_CURSOR );
-#endif
 }
 
 wxIMPLEMENT_DYNAMIC_CLASS(wxDataViewCtrl,wxDataViewCtrlBase);
@@ -791,5 +740,6 @@ wxBEGIN_EVENT_TABLE(wxDataViewCtrl,wxDataViewCtrlBase)
   EVT_MOTION(wxDataViewCtrl::OnMouse)
 wxEND_EVENT_TABLE()
 
-#endif // (wxUSE_DATAVIEWCTRL != 0) && (!defined(wxUSE_GENERICDATAVIEWCTRL) || (wxUSE_GENERICDATAVIEWCTRL == 0))
+#endif // !wxUSE_GENERICDATAVIEWCTRL
 
+#endif // wxUSE_DATAVIEWCTRL

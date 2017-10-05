@@ -5,7 +5,7 @@
 // Modified by:
 // Created:     23.09.98
 // Copyright:   (c) 1998 Vadim Zeitlin <zeitlin@dptmaths.ens-cachan.fr>
-// Licence:     wxWindows licence (part of wxExtra library)
+// Licence:     wxWidgets licence (part of base library)
 /////////////////////////////////////////////////////////////////////////////
 
 // for compilers that support precompilation, includes "wx.h".
@@ -40,6 +40,7 @@
     #include "wx/msw/registry.h"
     #include "wx/msw/private.h"
     #include <shlwapi.h>
+    #include "wx/msw/wrapshl.h"
 
     // For MSVC we can link in the required library explicitly, for the other
     // compilers (e.g. MinGW) this needs to be done at makefiles level.
@@ -90,7 +91,7 @@ class WXDLLIMPEXP_FWD_CORE wxIcon;
 // permissions. So the right thing to do is to use HKCR when reading, to
 // respect both per-user and machine-global associations, but only write under
 // HKCU.
-static const wxChar *CLASSES_ROOT_KEY = wxS("Software\\Classes\\");
+static const wxStringCharType *CLASSES_ROOT_KEY = wxS("Software\\Classes\\");
 
 // although I don't know of any official documentation which mentions this
 // location, uses it, so it isn't likely to change
@@ -146,6 +147,8 @@ void wxFileTypeImpl::Init(const wxString& strFileType, const wxString& ext)
     if ( !strFileType ) {
         m_strFileType = m_ext.AfterFirst('.') + wxT("_auto_file");
     }
+
+    m_suppressNotify = false;
 }
 
 wxString wxFileTypeImpl::GetVerbPath(const wxString& verb) const
@@ -208,6 +211,17 @@ size_t wxFileTypeImpl::GetAllCommands(wxArrayString *verbs,
     }
 
     return count;
+}
+
+void wxFileTypeImpl::MSWNotifyShell()
+{
+    if (!m_suppressNotify)
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST | SHCNF_FLUSHNOWAIT, NULL, NULL);
+}
+
+void wxFileTypeImpl::MSWSuppressNotifications(bool supress)
+{
+    m_suppressNotify = supress;
 }
 
 // ----------------------------------------------------------------------------
@@ -324,33 +338,19 @@ wxString wxFileTypeImpl::GetCommand(const wxString& verb) const
     return command;
 }
 
-bool
-wxFileTypeImpl::GetOpenCommand(wxString *openCmd,
-                               const wxFileType::MessageParameters& params)
-                               const
+
+wxString
+wxFileTypeImpl::GetExpandedCommand(const wxString & verb,
+                                   const wxFileType::MessageParameters& params) const
 {
-    wxString cmd = GetCommand(wxT("open"));
+    wxString cmd = GetCommand(verb);
 
     // Some viewers don't define the "open" verb but do define "show" one, try
     // to use it as a fallback.
-    if ( cmd.empty() )
+    if ( cmd.empty() && (verb == wxT("open")) )
         cmd = GetCommand(wxT("show"));
 
-    *openCmd = wxFileType::ExpandCommand(cmd, params);
-
-    return !openCmd->empty();
-}
-
-bool
-wxFileTypeImpl::GetPrintCommand(wxString *printCmd,
-                                const wxFileType::MessageParameters& params)
-                                const
-{
-    wxString cmd = GetCommand(wxT("print"));
-
-    *printCmd = wxFileType::ExpandCommand(cmd, params);
-
-    return !printCmd->empty();
+    return wxFileType::ExpandCommand(cmd, params);
 }
 
 // ----------------------------------------------------------------------------
@@ -676,12 +676,15 @@ wxFileType *wxMimeTypesManagerImpl::Associate(const wxFileTypeInfo& ftInfo)
 
     if (ft)
     {
+        ft->m_impl->MSWSuppressNotifications(true);
         if (! ftInfo.GetOpenCommand ().empty() ) ft->SetCommand (ftInfo.GetOpenCommand (), wxT("open"  ) );
         if (! ftInfo.GetPrintCommand().empty() ) ft->SetCommand (ftInfo.GetPrintCommand(), wxT("print" ) );
         // chris: I don't like the ->m_impl-> here FIX this ??
         if (! ftInfo.GetDescription ().empty() ) ft->m_impl->SetDescription (ftInfo.GetDescription ()) ;
         if (! ftInfo.GetIconFile().empty() ) ft->SetDefaultIcon (ftInfo.GetIconFile(), ftInfo.GetIconIndex() );
 
+        ft->m_impl->MSWSuppressNotifications(false);
+        ft->m_impl->MSWNotifyShell();
     }
 
     return ft;
@@ -702,7 +705,12 @@ bool wxFileTypeImpl::SetCommand(const wxString& cmd,
     // TODO:
     // 1. translate '%s' to '%1' instead of always adding it
     // 2. create DDEExec value if needed (undo GetCommand)
-    return rkey.Create() && rkey.SetValue(wxEmptyString, cmd + wxT(" \"%1\"") );
+    bool result = rkey.Create() && rkey.SetValue(wxEmptyString, cmd + wxT(" \"%1\"") );
+
+    if ( result )
+        MSWNotifyShell();
+
+    return result;
 }
 
 bool wxFileTypeImpl::SetDefaultIcon(const wxString& cmd, int index)
@@ -718,9 +726,14 @@ bool wxFileTypeImpl::SetDefaultIcon(const wxString& cmd, int index)
     wxRegKey rkey(wxRegKey::HKCU,
                   CLASSES_ROOT_KEY + m_strFileType + wxT("\\DefaultIcon"));
 
-    return rkey.Create() &&
+    bool result = rkey.Create() &&
            rkey.SetValue(wxEmptyString,
                          wxString::Format(wxT("%s,%d"), cmd.c_str(), index));
+
+    if ( result )
+        MSWNotifyShell();
+
+    return result;
 }
 
 bool wxFileTypeImpl::SetDescription (const wxString& desc)
@@ -743,6 +756,7 @@ bool wxFileTypeImpl::SetDescription (const wxString& desc)
 
 bool wxFileTypeImpl::Unassociate()
 {
+    MSWSuppressNotifications(true);
     bool result = true;
     if ( !RemoveOpenCommand() )
         result = false;
@@ -752,6 +766,9 @@ bool wxFileTypeImpl::Unassociate()
         result = false;
     if ( !RemoveDescription() )
         result = false;
+
+    MSWSuppressNotifications(false);
+    MSWNotifyShell();
 
     return result;
 }
@@ -769,7 +786,12 @@ bool wxFileTypeImpl::RemoveCommand(const wxString& verb)
     wxRegKey rkey(wxRegKey::HKCU, CLASSES_ROOT_KEY + GetVerbPath(verb));
 
     // if the key already doesn't exist, it's a success
-    return !rkey.Exists() || rkey.DeleteSelf();
+    bool result = !rkey.Exists() || rkey.DeleteSelf();
+
+    if ( result )
+        MSWNotifyShell();
+
+    return result;
 }
 
 bool wxFileTypeImpl::RemoveMimeType()
@@ -787,7 +809,12 @@ bool wxFileTypeImpl::RemoveDefaultIcon()
 
     wxRegKey rkey (wxRegKey::HKCU,
                    CLASSES_ROOT_KEY + m_strFileType  + wxT("\\DefaultIcon"));
-    return !rkey.Exists() || rkey.DeleteSelf();
+    bool result = !rkey.Exists() || rkey.DeleteSelf();
+
+    if ( result )
+        MSWNotifyShell();
+
+    return result;
 }
 
 bool wxFileTypeImpl::RemoveDescription()

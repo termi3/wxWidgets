@@ -83,7 +83,7 @@ gtk_changed(GtkSpinButton* spinbutton, wxSpinCtrl* win)
 class wxSpinCtrlEventDisabler
 {
 public:
-    wxEXPLICIT wxSpinCtrlEventDisabler(wxSpinCtrlGTKBase* spin)
+    explicit wxSpinCtrlEventDisabler(wxSpinCtrlGTKBase* spin)
         : m_spin(spin)
     {
         m_spin->GtkDisableEvents();
@@ -355,31 +355,40 @@ GdkWindow *wxSpinCtrlGTKBase::GTKGetWindow(wxArrayGdkWindows& windows) const
 
 wxSize wxSpinCtrlGTKBase::DoGetBestSize() const
 {
-    return DoGetSizeFromTextSize(95); // TODO: 95 is completely arbitrary
+    const int minVal = static_cast<int>(DoGetMin());
+    const int lenMin = wxString::Format("%d", minVal).length();
+
+    const int maxVal = static_cast<int>(DoGetMax());
+    const int lenMax = wxString::Format("%d", maxVal).length();
+
+    wxString longestText(wxMax(lenMin, lenMax), '9');
+    if ( minVal < 0 )
+        longestText.insert(0, "-");
+    return DoGetSizeFromTextSize(GetTextExtent(longestText).x, -1);
 }
 
 wxSize wxSpinCtrlGTKBase::DoGetSizeFromTextSize(int xlen, int ylen) const
 {
     wxASSERT_MSG( m_widget, wxS("GetSizeFromTextSize called before creation") );
 
-    // Set an as small as possible size for the control, so preferred sizes
-    // return "natural" sizes, not taking into account the previous ones (which
-    // seems to be GTK+3 behaviour)
-    gtk_widget_set_size_request(m_widget, 0, 0);
+    const gint widthChars = gtk_entry_get_width_chars(GTK_ENTRY(m_widget));
+    gtk_entry_set_width_chars(GTK_ENTRY(m_widget), 0);
+#if GTK_CHECK_VERSION(3,12,0)
+    gint maxWidthChars = 0;
+    if ( gtk_check_version(3,12,0) == NULL )
+    {
+        maxWidthChars = gtk_entry_get_max_width_chars(GTK_ENTRY(m_widget));
+        gtk_entry_set_max_width_chars(GTK_ENTRY(m_widget), 0);
+    }
+#endif // GTK+ 3.12+
 
-    // Both Gtk+2 and Gtk+3 use current value/range to measure control's width.
-    // So, we can't ask Gtk+ for its width. Instead, we used hardcoded values.
-
-    // Returned height is OK
     wxSize totalS = GTKGetPreferredSize(m_widget);
 
-#if GTK_CHECK_VERSION(3,4,0)
-    // two buttons in horizontal
-    totalS.x = 46 + 15; // margins included
-#else
-    // two small buttons in vertical
-    totalS.x = GetFont().GetPixelSize().y + 13; // margins included
-#endif
+#if GTK_CHECK_VERSION(3,12,0)
+    if ( gtk_check_version(3,12,0) == NULL )
+        gtk_entry_set_max_width_chars(GTK_ENTRY(m_widget), maxWidthChars);
+#endif // GTK+ 3.12+
+    gtk_entry_set_width_chars(GTK_ENTRY(m_widget), widthChars);
 
     wxSize tsize(xlen + totalS.x, totalS.y);
 

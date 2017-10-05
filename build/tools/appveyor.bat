@@ -32,7 +32,7 @@ set CHERE_INVOKING=yes
 :: Workaround for "configure: Bad file descriptor"
 perl -i".bak" -pe "s/^test -n \".DJDIR\"/#$&/" configure
 bash -lc "g++ --version"
-bash -lc "CXXFLAGS=-Wno-deprecated-declarations ./configure --enable-debug --disable-xrc && make -j3"
+bash -lc "CXXFLAGS=-Wno-deprecated-declarations ./configure --disable-optimise && make -j3"
 goto :eof
 
 :cygwin
@@ -42,5 +42,5 @@ set CHERE_INVOKING=yes
 :: Workaround for "configure: Bad file descriptor"
 perl -i".bak" -pe "s/^test -n \".DJDIR\"/#$&/" configure
 bash -lc "g++ --version"
-bash -lc "LDFLAGS=-L/usr/lib/w32api ./configure --enable-debug --disable-shared --disable-html --disable-richtext --disable-stc && make -j3"
+bash -lc "LDFLAGS=-L/usr/lib/w32api ./configure --disable-optimise --disable-shared && make -j3"
 goto :eof

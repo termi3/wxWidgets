@@ -140,7 +140,6 @@ class HP_TagHandler : public wxHtmlTagHandler
         wxString m_name, m_page;
         int m_level;
         int m_id;
-        int m_index;
         int m_count;
         wxHtmlHelpDataItem *m_parentItem;
         wxHtmlBookRecord *m_book;
@@ -230,7 +229,10 @@ bool HP_TagHandler::HandleTag(const wxHtmlTag& tag)
         if (m_name.empty() && tag.GetParam(wxT("NAME")) == wxT("Name"))
             m_name = tag.GetParam(wxT("VALUE"));
         if (tag.GetParam(wxT("NAME")) == wxT("Local"))
+        {
             m_page = tag.GetParam(wxT("VALUE"));
+            m_page.Replace("\\", "/");
+        }
         if (tag.GetParam(wxT("NAME")) == wxT("ID"))
             tag.GetParamAsInt(wxT("VALUE"), &m_id);
         return false;
@@ -684,7 +686,10 @@ bool wxHtmlHelpData::AddBook(const wxString& book)
         if (wxStrstr(linebuf, wxT("title=")) == linebuf)
             title = linebuf + wxStrlen(wxT("title="));
         if (wxStrstr(linebuf, wxT("default topic=")) == linebuf)
+        {
             start = linebuf + wxStrlen(wxT("default topic="));
+            start.Replace("\\", "/");
+        }
         if (wxStrstr(linebuf, wxT("index file=")) == linebuf)
             index = linebuf + wxStrlen(wxT("index file="));
         if (wxStrstr(linebuf, wxT("contents file=")) == linebuf)
@@ -695,7 +700,7 @@ bool wxHtmlHelpData::AddBook(const wxString& book)
 
     wxFontEncoding enc = wxFONTENCODING_SYSTEM;
 #if wxUSE_FONTMAP
-    if (charset != wxEmptyString)
+    if (!charset.empty())
         enc = wxFontMapper::Get()->CharsetToEncoding(charset);
 #endif
 
@@ -802,7 +807,7 @@ wxHtmlSearchStatus::wxHtmlSearchStatus(wxHtmlHelpData* data, const wxString& key
     m_Data = data;
     m_Keyword = keyword;
     wxHtmlBookRecord* bookr = NULL;
-    if (book != wxEmptyString)
+    if (!book.empty())
     {
         // we have to search in a specific book. Find it first
         int i, cnt = data->m_bookRecords.GetCount();

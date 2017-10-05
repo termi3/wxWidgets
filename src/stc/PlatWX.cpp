@@ -32,6 +32,7 @@
 #include "wx/image.h"
 #include "wx/imaglist.h"
 #include "wx/tokenzr.h"
+#include "wx/dynlib.h"
 
 #ifdef wxHAS_RAW_BITMAP
 #include "wx/rawbmp.h"
@@ -387,13 +388,13 @@ void SurfaceImpl::AlphaRectangle(PRectangle rc, int cornerSize,
     // TODO:  do something with cornerSize
     wxUnusedVar(cornerSize);
 
-    int x, y;
     wxRect r = wxRectFromPRectangle(rc);
     wxBitmap bmp(r.width, r.height, 32);
 
     // This block is needed to ensure that the changes done to the bitmap via
     // pixel data object are committed before the bitmap is drawn.
     {
+        int px, py;
         wxAlphaPixelData pixData(bmp);
 
         // Set the fill pixels
@@ -403,9 +404,9 @@ void SurfaceImpl::AlphaRectangle(PRectangle rc, int cornerSize,
         int blue  = cdf.GetBlue();
 
         wxAlphaPixelData::Iterator p(pixData);
-        for (y=0; y<r.height; y++) {
-            p.MoveTo(pixData, 0, y);
-            for (x=0; x<r.width; x++) {
+        for (py=0; py<r.height; py++) {
+            p.MoveTo(pixData, 0, py);
+            for (px=0; px<r.width; px++) {
                 p.Red()   = wxPy_premultiply(red,   alphaFill);
                 p.Green() = wxPy_premultiply(green, alphaFill);
                 p.Blue()  = wxPy_premultiply(blue,  alphaFill);
@@ -419,26 +420,26 @@ void SurfaceImpl::AlphaRectangle(PRectangle rc, int cornerSize,
         red   = cdo.GetRed();
         green = cdo.GetGreen();
         blue  = cdo.GetBlue();
-        for (x=0; x<r.width; x++) {
-            p.MoveTo(pixData, x, 0);
+        for (px=0; px<r.width; px++) {
+            p.MoveTo(pixData, px, 0);
             p.Red()   = wxPy_premultiply(red,   alphaOutline);
             p.Green() = wxPy_premultiply(green, alphaOutline);
             p.Blue()  = wxPy_premultiply(blue,  alphaOutline);
             p.Alpha() = alphaOutline;
-            p.MoveTo(pixData, x, r.height-1);
+            p.MoveTo(pixData, px, r.height-1);
             p.Red()   = wxPy_premultiply(red,   alphaOutline);
             p.Green() = wxPy_premultiply(green, alphaOutline);
             p.Blue()  = wxPy_premultiply(blue,  alphaOutline);
             p.Alpha() = alphaOutline;
         }
 
-        for (y=0; y<r.height; y++) {
-            p.MoveTo(pixData, 0, y);
+        for (py=0; py<r.height; py++) {
+            p.MoveTo(pixData, 0, py);
             p.Red()   = wxPy_premultiply(red,   alphaOutline);
             p.Green() = wxPy_premultiply(green, alphaOutline);
             p.Blue()  = wxPy_premultiply(blue,  alphaOutline);
             p.Alpha() = alphaOutline;
-            p.MoveTo(pixData, r.width-1, y);
+            p.MoveTo(pixData, r.width-1, py);
             p.Red()   = wxPy_premultiply(red,   alphaOutline);
             p.Green() = wxPy_premultiply(green, alphaOutline);
             p.Blue()  = wxPy_premultiply(blue,  alphaOutline);
@@ -1440,9 +1441,37 @@ void Menu::Show(Point pt, Window &w) {
 
 //----------------------------------------------------------------------
 
-DynamicLibrary *DynamicLibrary::Load(const char *WXUNUSED(modulePath)) {
-    wxFAIL_MSG(wxT("Dynamic lexer loading not implemented yet"));
-    return NULL;
+class DynamicLibraryImpl : public DynamicLibrary {
+public:
+    explicit DynamicLibraryImpl(const char *modulePath)
+        : m_dynlib(wxString::FromUTF8(modulePath), wxDL_LAZY) {
+    }
+
+    // Use GetSymbol to get a pointer to the relevant function.
+    virtual Function FindFunction(const char *name) wxOVERRIDE {
+        if (m_dynlib.IsLoaded()) {
+            bool status;
+            void* fn_address = m_dynlib.GetSymbol(wxString::FromUTF8(name),
+                                                  &status);
+            if(status)
+                return fn_address;
+            else
+                return NULL;
+        }
+        else
+            return NULL;
+    }
+
+    virtual bool IsValid() wxOVERRIDE {
+        return m_dynlib.IsLoaded();
+    }
+
+private:
+    wxDynamicLibrary m_dynlib;
+};
+
+DynamicLibrary *DynamicLibrary::Load(const char *modulePath) {
+    return static_cast<DynamicLibrary *>( new DynamicLibraryImpl(modulePath) );
 }
 
 //----------------------------------------------------------------------
@@ -1618,44 +1647,25 @@ double ElapsedTime::Duration(bool reset) {
 
 #if wxUSE_UNICODE
 
-#include "UniConversion.h"
-
-// Convert using Scintilla's functions instead of wx's, Scintilla's are more
-// forgiving and won't assert...
+// For historical reasons, we use Scintilla-specific conversion functions, we
+// should probably just call FromUTF8()/utf8_str() directly instead now.
 
 wxString stc2wx(const char* str, size_t len)
 {
-    if (!len)
-        return wxEmptyString;
-
-    size_t wclen = UTF16Length(str, len);
-    wxWCharBuffer buffer(wclen+1);
-
-    size_t actualLen = UTF16FromUTF8(str, len, buffer.data(), wclen+1);
-    return wxString(buffer.data(), actualLen);
+    return wxString::FromUTF8(str, len);
 }
 
 
 
 wxString stc2wx(const char* str)
 {
-    return stc2wx(str, strlen(str));
+    return wxString::FromUTF8(str);
 }
 
 
 wxWX2MBbuf wx2stc(const wxString& str)
 {
-    const wchar_t* wcstr = str.c_str();
-    size_t wclen         = str.length();
-    size_t len           = UTF8Length(wcstr, wclen);
-
-    // The buffer object adds extra byte for the terminating NUL and we must
-    // pass the total length, including this NUL, to UTF8FromUTF16() to ensure
-    // that it NULL-terminates the string.
-    wxCharBuffer buffer(len);
-    UTF8FromUTF16(wcstr, wclen, buffer.data(), len + 1);
-
-    return buffer;
+    return str.utf8_str();
 }
 
 #endif

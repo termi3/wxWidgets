@@ -26,11 +26,11 @@ wxWidgets currently supports the following primary platforms:
 
 - Windows XP, Vista, 7, 8 and 10 (32/64 bits).
 - Most Unix variants using the GTK+ toolkit (version 2.6 or newer or 3.x).
-- Mac OS X (10.7 or newer) using Cocoa (32/64 bits) or Carbon (32 only).
+- OS X (10.7 or newer) using Cocoa (32/64 bits).
 
 Most popular C++ compilers are supported including but not limited to:
 
-- Microsoft Visual C++ 2003 or later (up to 2015).
+- Microsoft Visual C++ 2003 or later (up to 2017).
 - g++ 3.4 or later, including MinGW/MinGW-64/TDM under Windows.
 - Clang under OS X and Linux.
 - Intel icc compiler.
@@ -51,13 +51,13 @@ Further information
 If you are looking for support, you can get it from
 
 - [Mailing Lists](https://www.wxwidgets.org/support/mailing-lists/)
-- [Discussion Forums][https://forums.wxwidgets.org/]
-- [#wxwidgets IRC channel][https://www.wxwidgets.org/support/irc/]
-- Stack Overflow (tag your questions with @c wxwidgets):
-  https://stackoverflow.com/questions/tagged/wxwidgets
-- Please report bugs at http://trac.wxwidgets.org/newticket
+- [Discussion Forums](https://forums.wxwidgets.org/)
+- [#wxwidgets IRC channel](https://www.wxwidgets.org/support/irc/)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/wxwidgets)
+  (tag your questions with `wxwidgets`)
+- Please report bugs at https://trac.wxwidgets.org/newticket
 
-We would also gladly welcome [your contributions](CONTRIBUTING.md).
+We would also gladly welcome [your contributions](.github/CONTRIBUTING.md).
 
 
 Have fun!

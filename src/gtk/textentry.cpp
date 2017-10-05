@@ -35,6 +35,24 @@
 #include "wx/gtk/private/gtk2-compat.h"
 #include "wx/gtk/private/string.h"
 
+//-----------------------------------------------------------------------------
+//  helper function to get the length of the text
+//-----------------------------------------------------------------------------
+
+static unsigned int GetEntryTextLength(GtkEntry* entry)
+{
+#if GTK_CHECK_VERSION(2, 14, 0)
+#ifndef __WXGTK3__
+    if ( gtk_check_version(2, 14, 0) == NULL )
+#endif // !GTK+ 3
+    {
+        return gtk_entry_get_text_length(entry);
+    }
+#endif // GTK+ 2.14+
+
+    return strlen(gtk_entry_get_text(entry));
+}
+
 // ============================================================================
 // signal handlers implementation
 // ============================================================================
@@ -61,7 +79,7 @@ wx_gtk_insert_text_callback(GtkEditable *editable,
     // check that we don't overflow the max length limit if we have it
     if ( text_max_length )
     {
-        const int text_length = gtk_entry_get_text_length(entry);
+        const int text_length = GetEntryTextLength(entry);
 
         // We can't use new_text_length as it is in bytes while we want to count
         // characters (in first approximation, anyhow...).
@@ -120,7 +138,13 @@ wx_gtk_insert_text_callback(GtkEditable *editable,
     }
 
     if ( handled )
+    {
+        // We must update the position to point after the newly inserted text,
+        // as expected by GTK+.
+        *position = text->GetInsertionPoint();
+
         g_signal_stop_emission_by_name (editable, "insert_text");
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -237,6 +261,12 @@ void wxTextEntry::Remove(long from, long to)
     gtk_editable_delete_text(GetEditable(), from, to);
 }
 
+// static
+unsigned int wxTextEntry::GTKGetEntryTextLength(GtkEntry* entry)
+{
+    return GetEntryTextLength(entry);
+}
+
 // ----------------------------------------------------------------------------
 // clipboard operations
 // ----------------------------------------------------------------------------
@@ -314,7 +344,7 @@ long wxTextEntry::GetLastPosition() const
     long pos = -1;
     GtkEntry* entry = (GtkEntry*)GetEditable();
     if (GTK_IS_ENTRY(entry))
-        pos = gtk_entry_get_text_length(entry);
+        pos = GetEntryTextLength(entry);
 
     return pos;
 }
@@ -568,7 +598,11 @@ bool wxTextEntry::SetHint(const wxString& hint)
     GtkEntry *entry = GetEntry();
     if (entry && gtk_check_version(3,2,0) == NULL)
     {
-        gtk_entry_set_placeholder_text(entry, wxGTK_CONV(hint));
+        gtk_entry_set_placeholder_text
+        (
+            entry,
+            wxGTK_CONV_FONT(hint, GetEditableWindow()->GetFont())
+        );
         return true;
     }
 #endif
@@ -580,7 +614,13 @@ wxString wxTextEntry::GetHint() const
 #if GTK_CHECK_VERSION(3,2,0)
     GtkEntry *entry = GetEntry();
     if (entry && gtk_check_version(3,2,0) == NULL)
-        return wxGTK_CONV_BACK(gtk_entry_get_placeholder_text(entry));
+    {
+        return wxGTK_CONV_BACK_FONT
+               (
+                gtk_entry_get_placeholder_text(entry),
+                const_cast<wxTextEntry *>(this)->GetEditableWindow()->GetFont()
+               );
+    }
 #endif
     return wxTextEntryBase::GetHint();
 }

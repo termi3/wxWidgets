@@ -113,7 +113,6 @@
 
 /* PowerPC Darwin & Mac OS X */
 #undef __POWERPC__
-#undef TARGET_CARBON
 
 /* Hack to make IOGraphicsTypes.h not define Point conflicting with MacTypes */
 #undef __Point__
@@ -151,6 +150,10 @@
 #define WXWIN_COMPATIBILITY_3_0 0
 
 #define wxDIALOG_UNIT_COMPATIBILITY   0
+
+#define wxUSE_UNSAFE_WXSTRING_CONV 0
+
+#define wxUSE_REPRODUCIBLE_BUILD 0
 
 
 
@@ -230,6 +233,8 @@
 #define wxUSE_FFILE         0
 
 #define wxUSE_FSVOLUME      0
+
+#define wxUSE_SECRETSTORE   0
 
 #define wxUSE_STDPATHS      0
 
@@ -331,10 +336,16 @@
 #define wxUSE_WEBVIEW_IE 0
 #endif
 
-#if defined(__WXGTK__) || defined(__WXOSX__)
+#if (defined(__WXGTK__) && !defined(__WXGTK3__)) || defined(__WXOSX__)
 #define wxUSE_WEBVIEW_WEBKIT 0
 #else
 #define wxUSE_WEBVIEW_WEBKIT 0
+#endif
+
+#if defined(__WXGTK3__)
+#define wxUSE_WEBVIEW_WEBKIT2 0
+#else
+#define wxUSE_WEBVIEW_WEBKIT2 0
 #endif
 
 
@@ -500,6 +511,8 @@
 
 #define wxUSE_PROGRESSDLG 0
 
+#define wxUSE_NATIVE_PROGRESSDLG 0
+
 #define wxUSE_STARTUP_TIPS 0
 
 #define wxUSE_TEXTDLG 0
@@ -541,7 +554,11 @@
 
 #define wxUSE_DRAG_AND_DROP 0
 
+#ifdef __WXMSW__
 #define wxUSE_ACCESSIBILITY 0
+#else
+#define wxUSE_ACCESSIBILITY 0
+#endif
 
 
 #define wxUSE_SNGLINST_CHECKER  0
@@ -634,6 +651,18 @@
  */
 #define wxUSE_GSTREAMER 0
 
+#define wxUSE_GSTREAMER_PLAYER 0
+
+/*
+   Use XTest extension to implement wxUIActionSimulator?
+
+   Default is 1, it is set to 0 if the necessary headers/libraries are not
+   found by configure.
+
+   Recommended setting: 1, wxUIActionSimulator won't work in wxGTK3 without it.
+ */
+#define wxUSE_XTEST 0
+
 /* --- start MSW options --- */
 
 
@@ -651,6 +680,12 @@
 #define wxUSE_OLE_AUTOMATION 0
 
 #define wxUSE_ACTIVEX 0
+
+#if defined(_MSC_VER) && _MSC_VER >= 1700 && !defined(_USING_V110_SDK71_)
+    #define wxUSE_WINRT 0
+#else
+    #define wxUSE_WINRT 0
+#endif
 
 #define wxUSE_DC_CACHEING 0
 
@@ -682,13 +717,14 @@
 #define wxUSE_TIMEPICKCTRL_GENERIC 0
 
 
+#if defined(__VISUALC__) || defined(__MINGW64_TOOLCHAIN__)
+    #define wxUSE_DBGHELP 0
+#else
+    #define wxUSE_DBGHELP 0
+#endif
+
 #define wxUSE_CRASHREPORT 0
 /* --- end MSW options --- */
-
-/*
- * Define if your compiler supports the explicit keyword
- */
-#undef HAVE_EXPLICIT
 
 /*
  * Define if your compiler has C99 va_copy
@@ -898,6 +934,9 @@
 
 /* struct tm doesn't always have the tm_gmtoff field, define this if it does */
 #undef WX_GMTOFF_IN_TM
+
+/* check if nl_langinfo() can be called with argument _NL_TIME_FIRST_WEEKDAY */
+#undef HAVE_NL_TIME_FIRST_WEEKDAY
 
 /* Define if you have poll(2) function */
 #undef HAVE_POLL

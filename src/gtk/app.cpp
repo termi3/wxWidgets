@@ -31,6 +31,7 @@
 #include <gtk/gtk.h>
 #include "wx/gtk/private.h"
 
+#include "wx/gtk/mimetype.h"
 //-----------------------------------------------------------------------------
 // link GnomeVFS
 //-----------------------------------------------------------------------------
@@ -279,7 +280,13 @@ bool wxApp::Initialize(int& argc_, wxChar **argv_)
 #if wxUSE_THREADS
     if (!g_thread_supported())
     {
+        // g_thread_init() does nothing and is deprecated in recent glib but
+        // might still be needed in the older versions, which are the only ones
+        // for which this code is going to be executed (as g_thread_supported()
+        // is always TRUE in these recent glib versions anyhow).
+        wxGCC_WARNING_SUPPRESS(deprecated-declarations)
         g_thread_init(NULL);
+        wxGCC_WARNING_RESTORE()
         gdk_threads_init();
     }
 #endif // wxUSE_THREADS
@@ -389,7 +396,7 @@ bool wxApp::Initialize(int& argc_, wxChar **argv_)
 
     // update internal arg[cv] as GTK+ may have removed processed options:
     this->argc = argc_;
-    this->argv = argv_;
+    this->argv.Init(argc_, argv_);
 
     if ( m_traits )
     {
@@ -428,6 +435,10 @@ bool wxApp::Initialize(int& argc_, wxChar **argv_)
         wxLogError(_("Unable to initialize GTK+, is DISPLAY set properly?"));
         return false;
     }
+
+#if wxUSE_MIMETYPE
+    wxMimeTypesManagerFactory::Set(new wxGTKMimeTypesManagerFactory());
+#endif
 
     // we cannot enter threads before gtk_init is done
     gdk_threads_enter();

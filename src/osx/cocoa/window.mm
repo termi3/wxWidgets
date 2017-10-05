@@ -71,7 +71,24 @@ NSView* GetFocusedViewInWindow( NSWindow* keyWindow )
 
 WXWidget wxWidgetImpl::FindFocus()
 {
-    return GetFocusedViewInWindow( [NSApp keyWindow] );;
+    NSWindow *key = [NSApp keyWindow];
+    if ( key == nil )
+    {
+        // Application's keyWindow property may still not be updated and be
+        // nil when windowDidBecomeKey: is called and even if the
+        // just-activated's window isKeyWindow already returns YES. To get
+        // accurate information about where the focus is at all times, we have
+        // to explicitly check all application windos as well:
+        for ( NSWindow *w in [NSApp windows] )
+        {
+            if ( [w isKeyWindow] )
+            {
+                key = w;
+                break;
+            }
+        }
+    }
+    return key ? GetFocusedViewInWindow(key) : nil;
 }
 
 wxWidgetImpl* wxWidgetImpl::FindBestFromWXWidget(WXWidget control)
@@ -513,19 +530,20 @@ bool g_lastButtonWasFakeRight = false ;
 
 void wxWidgetCocoaImpl::SetupCoordinates(wxCoord &x, wxCoord &y, NSEvent* nsEvent)
 {
-    NSPoint locationInWindow = [nsEvent locationInWindow];
+    NSRect locationInWindow = NSZeroRect;
+    locationInWindow.origin = [nsEvent locationInWindow];
     
     // adjust coordinates for the window of the target view
     if ( [nsEvent window] != [m_osxView window] )
     {
         if ( [nsEvent window] != nil )
-            locationInWindow = [[nsEvent window] convertBaseToScreen:locationInWindow];
+            locationInWindow = [[nsEvent window] convertRectToScreen:locationInWindow];
         
         if ( [m_osxView window] != nil )
-            locationInWindow = [[m_osxView window] convertScreenToBase:locationInWindow];
+            locationInWindow = [[m_osxView window] convertRectFromScreen:locationInWindow];
     }
     
-    NSPoint locationInView = [m_osxView convertPoint:locationInWindow fromView:nil];
+    NSPoint locationInView = [m_osxView convertPoint:locationInWindow.origin fromView:nil];
     wxPoint locationInViewWX = wxFromNSPoint( m_osxView, locationInView );
         
     x = locationInViewWX.x;
@@ -985,7 +1003,9 @@ void wxOSX_mouseEvent(NSView* self, SEL _cmd, NSEvent *event)
     if (impl == NULL)
         return;
 
-    impl->mouseEvent(event, self, _cmd);
+    // We shouldn't let disabled windows get mouse events.
+    if (impl->GetWXPeer()->IsEnabled())
+        impl->mouseEvent(event, self, _cmd);
 }
 
 void wxOSX_cursorUpdate(NSView* self, SEL _cmd, NSEvent *event)
@@ -1897,11 +1917,11 @@ double wxWidgetCocoaImpl::GetContentScaleFactor() const
 
 - (id)init:(wxWindow *)win
 {
-    self = [super init];
-
-    m_win = win;
-    m_isDone = false;
-
+    if ( self = [super init] )
+    {
+        m_win = win;
+        m_isDone = false;
+    }
     return self;
 }
 
@@ -2044,7 +2064,7 @@ wxWidgetCocoaImpl::ShowViewOrWindowWithEffect(wxWindow *win,
     {
         // what is a good default duration? Windows uses 200ms, Web frameworks
         // use anything from 250ms to 1s... choose something in the middle
-        timeout = 500;
+        timeout = 200;
     }
 
     [anim setDuration:timeout/1000.];   // duration is in seconds here
@@ -2109,19 +2129,14 @@ bool wxWidgetCocoaImpl::ShowWithEffect(bool show,
     return ShowViewOrWindowWithEffect(m_wxPeer, show, effect, timeout);
 }
 
-/* note that the drawing order between siblings is not defined under 10.4 */
-/* only starting from 10.5 the subview order is respected */
-
-/* NSComparisonResult is typedef'd as an enum pre-Leopard but typedef'd as
- * NSInteger post-Leopard.  Pre-Leopard the Cocoa toolkit expects a function
- * returning int and not NSComparisonResult.  Post-Leopard the Cocoa toolkit
- * expects a function returning the new non-enum NSComparsionResult.
- * Hence we create a typedef named CocoaWindowCompareFunctionResult.
- */
-#if defined(NSINTEGER_DEFINED)
-typedef NSComparisonResult CocoaWindowCompareFunctionResult;
+// To avoid warnings about incompatible pointer types with macOS 10.12 SDK (and
+// maybe even earlier? This has changed at some time between 10.9 and 10.12),
+// we need to constrain the comparison function arguments instead of just using
+// "id".
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12 && __has_feature(objc_kindof)
+typedef __kindof NSView* KindOfView;
 #else
-typedef int CocoaWindowCompareFunctionResult;
+typedef id KindOfView;
 #endif
 
 class CocoaWindowCompareContext
@@ -2135,19 +2150,20 @@ public:
         // Cocoa sorts subviews in-place.. make a copy
         m_subviews = [subviews copy];
     }
-    
+
     ~CocoaWindowCompareContext()
     {   // release the copy
         [m_subviews release];
     }
     NSView* target()
     {   return m_target; }
-    
+
     NSArray* subviews()
     {   return m_subviews; }
-    
+
     /* Helper function that returns the comparison based off of the original ordering */
-    CocoaWindowCompareFunctionResult CompareUsingOriginalOrdering(id first, id second)
+    NSComparisonResult CompareUsingOriginalOrdering(KindOfView first,
+            KindOfView second)
     {
         NSUInteger firstI = [m_subviews indexOfObjectIdenticalTo:first];
         NSUInteger secondI = [m_subviews indexOfObjectIdenticalTo:second];
@@ -2157,14 +2173,14 @@ public:
         // sortSubviewsUsingFunction:context:.  Thus we don't bother checking.  Particularly because
         // that case should never occur anyway because that would imply a multi-threaded GUI call
         // which is a big no-no with Cocoa.
-		
+
         // Subviews are ordered from back to front meaning one that is already lower will have an lower index.
         NSComparisonResult result = (firstI < secondI)
-		?   NSOrderedAscending /* -1 */
-		:   (firstI > secondI)
-		?   NSOrderedDescending /* 1 */
-		:   NSOrderedSame /* 0 */;
-		
+        ?   NSOrderedAscending /* -1 */
+        :   (firstI > secondI)
+        ?   NSOrderedDescending /* 1 */
+        :   NSOrderedSame /* 0 */;
+
         return result;
     }
 private:
@@ -2178,7 +2194,7 @@ private:
  * the target view is always higher than every other view.  When comparing two views neither of
  * which is the target, it returns the correct response based on the original ordering
  */
-static CocoaWindowCompareFunctionResult CocoaRaiseWindowCompareFunction(id first, id second, void *ctx)
+static NSComparisonResult CocoaRaiseWindowCompareFunction(KindOfView first, KindOfView second, void *ctx)
 {
     CocoaWindowCompareContext *compareContext = (CocoaWindowCompareContext*)ctx;
     // first should be ordered higher
@@ -2192,22 +2208,21 @@ static CocoaWindowCompareFunctionResult CocoaRaiseWindowCompareFunction(id first
 
 void wxWidgetCocoaImpl::Raise()
 {
-	NSView* nsview = m_osxView;
-	
+    NSView* nsview = m_osxView;
+
     NSView *superview = [nsview superview];
     CocoaWindowCompareContext compareContext(nsview, [superview subviews]);
-	
-    [superview sortSubviewsUsingFunction:
-	 CocoaRaiseWindowCompareFunction
-								 context: &compareContext];
-	
+
+    [superview sortSubviewsUsingFunction: CocoaRaiseWindowCompareFunction
+                                 context: &compareContext];
+
 }
 
 /* Causes Cocoa to lower the target view to the bottom of the Z-Order by telling the sort function that
  * the target view is always lower than every other view.  When comparing two views neither of
  * which is the target, it returns the correct response based on the original ordering
  */
-static CocoaWindowCompareFunctionResult CocoaLowerWindowCompareFunction(id first, id second, void *ctx)
+static NSComparisonResult CocoaLowerWindowCompareFunction(KindOfView first, KindOfView second, void *ctx)
 {
     CocoaWindowCompareContext *compareContext = (CocoaWindowCompareContext*)ctx;
     // first should be ordered lower
@@ -2221,14 +2236,13 @@ static CocoaWindowCompareFunctionResult CocoaLowerWindowCompareFunction(id first
 
 void wxWidgetCocoaImpl::Lower()
 {
-	NSView* nsview = m_osxView;
-	
+    NSView* nsview = m_osxView;
+
     NSView *superview = [nsview superview];
     CocoaWindowCompareContext compareContext(nsview, [superview subviews]);
-	
-    [superview sortSubviewsUsingFunction:
-	 CocoaLowerWindowCompareFunction
-								 context: &compareContext];
+
+    [superview sortSubviewsUsingFunction: CocoaLowerWindowCompareFunction
+                                 context: &compareContext];
 }
 
 void wxWidgetCocoaImpl::ScrollRect( const wxRect *WXUNUSED(rect), int WXUNUSED(dx), int WXUNUSED(dy) )
@@ -2336,12 +2350,18 @@ bool wxWidgetCocoaImpl::GetNeedsDisplay() const
 
 bool wxWidgetCocoaImpl::CanFocus() const
 {
-    return [m_osxView canBecomeKeyView] == YES;
+    NSView* targetView = m_osxView;
+    if ( [m_osxView isKindOfClass:[NSScrollView class] ] )
+        targetView = [(NSScrollView*) m_osxView documentView];
+    return [targetView canBecomeKeyView] == YES;
 }
 
 bool wxWidgetCocoaImpl::HasFocus() const
 {
-    return ( FindFocus() == m_osxView );
+    NSView* targetView = m_osxView;
+    if ( [m_osxView isKindOfClass:[NSScrollView class] ] )
+        targetView = [(NSScrollView*) m_osxView documentView];
+    return ( FindFocus() == targetView );
 }
 
 bool wxWidgetCocoaImpl::SetFocus()
@@ -2349,9 +2369,13 @@ bool wxWidgetCocoaImpl::SetFocus()
     if ( !CanFocus() )
         return false;
 
+    NSView* targetView = m_osxView;
+    if ( [m_osxView isKindOfClass:[NSScrollView class] ] )
+        targetView = [(NSScrollView*) m_osxView documentView];
+
     // TODO remove if no issues arise: should not raise the window, only assign focus
     //[[m_osxView window] makeKeyAndOrderFront:nil] ;
-    [[m_osxView window] makeFirstResponder: m_osxView] ;
+    [[m_osxView window] makeFirstResponder: targetView] ;
     return true;
 }
 
@@ -2420,6 +2444,63 @@ bool wxWidgetCocoaImpl::SetBackgroundStyle( wxBackgroundStyle style )
 
 void wxWidgetCocoaImpl::SetLabel( const wxString& title, wxFontEncoding encoding )
 {
+    if ( [m_osxView respondsToSelector:@selector(setAttributedTitle:) ] )
+    {
+        wxFont f = GetWXPeer()->GetFont();
+        // we should not override system font colors unless explicitly specified
+        wxColour col = GetWXPeer()->UseForegroundColour() ? GetWXPeer()->GetForegroundColour() : wxNullColour;
+        if ( f.GetStrikethrough() || f.GetUnderlined() || col.IsOk() )
+        {
+            wxCFStringRef cf(title, encoding );
+
+            NSMutableAttributedString *attrString = [[NSMutableAttributedString alloc]
+                                                     initWithString:cf.AsNSString()];
+
+            [attrString beginEditing];
+
+            NSTextAlignment textAlign;
+            if ( [m_osxView isKindOfClass:[NSControl class]] )
+                textAlign = [(id)m_osxView alignment];
+            else
+                textAlign = NSCenterTextAlignment;
+            [attrString setAlignment:textAlign
+                               range:NSMakeRange(0, [attrString length])];
+
+            [attrString addAttribute:NSFontAttributeName
+                               value:f.OSXGetNSFont()
+                               range:NSMakeRange(0, [attrString length])];
+            if ( f.GetStrikethrough() )
+            {
+                [attrString addAttribute:NSStrikethroughStyleAttributeName
+                                   value:@(NSUnderlineStyleSingle)
+                                   range:NSMakeRange(0, [attrString length])];
+            }
+
+            if ( f.GetUnderlined() )
+            {
+                [attrString addAttribute:NSUnderlineStyleAttributeName
+                                   value:@(NSUnderlineStyleSingle)
+                                   range:NSMakeRange(0, [attrString length])];
+
+            }
+
+            if ( col.IsOk() )
+            {
+                [attrString addAttribute:NSForegroundColorAttributeName
+                                   value:col.OSXGetNSColor()
+                                   range:NSMakeRange(0, [attrString length])];
+            }
+
+            [attrString endEditing];
+
+            [(id)m_osxView setAttributedTitle:attrString];
+            
+            [attrString release];
+
+            return;
+        }
+    }
+
     if ( [m_osxView respondsToSelector:@selector(setTitle:) ] )
     {
         wxCFStringRef cf( title , encoding );
@@ -2661,11 +2742,15 @@ void wxWidgetCocoaImpl::SetFont(wxFont const& font, wxColour const&col, long, bo
     NSView* targetView = m_osxView;
     if ( [m_osxView isKindOfClass:[NSScrollView class] ] )
         targetView = [(NSScrollView*) m_osxView documentView];
+    else if ( [m_osxView isKindOfClass:[NSBox class] ] )
+        targetView = [(NSBox*) m_osxView titleCell];
 
     if ([targetView respondsToSelector:@selector(setFont:)])
         [targetView setFont: font.OSXGetNSFont()];
     if ([targetView respondsToSelector:@selector(setTextColor:)])
         [targetView setTextColor: col.OSXGetNSColor()];
+    if ([m_osxView respondsToSelector:@selector(setAttributedTitle:)])
+        SetLabel(wxStripMenuCodes(GetWXPeer()->GetLabel(), wxStrip_Mnemonics), GetWXPeer()->GetFont().GetEncoding());
 }
 
 void wxWidgetCocoaImpl::SetToolTip(wxToolTip* tooltip)
@@ -2755,6 +2840,41 @@ bool wxWidgetCocoaImpl::DoHandleCharEvent(NSEvent *event, NSString *text)
     return result;
 }
 
+bool wxWidgetCocoaImpl::ShouldHandleKeyNavigation(const wxKeyEvent &WXUNUSED(event)) const
+{
+    // Only controls that intercept tabs for different behavior should return false (ie wxTE_PROCESS_TAB)
+    return true;
+}
+
+bool wxWidgetCocoaImpl::DoHandleKeyNavigation(const wxKeyEvent &event)
+{
+    bool handled = false;
+    wxWindow *focus = GetWXPeer();
+    if (focus && event.GetKeyCode() == WXK_TAB)
+    {
+        if (ShouldHandleKeyNavigation(event))
+        {
+            wxWindow* iter = focus->GetParent() ;
+            while (iter && !handled)
+            {
+                if (iter->HasFlag(wxTAB_TRAVERSAL))
+                {
+                    wxNavigationKeyEvent new_event;
+                    new_event.SetEventObject( focus );
+                    new_event.SetDirection( !event.ShiftDown() );
+                    /* CTRL-TAB changes the (parent) window, i.e. switch notebook page */
+                    new_event.SetWindowChange( event.ControlDown() );
+                    new_event.SetCurrentFocus( focus );
+                    handled = iter->HandleWindowEvent( new_event ) && !new_event.GetSkipped();
+                }
+
+                iter = iter->GetParent() ;
+            }
+        }
+    }
+    return handled;
+}
+
 bool wxWidgetCocoaImpl::DoHandleKeyEvent(NSEvent *event)
 {
     wxKeyEvent wxevent(wxEVT_KEY_DOWN);
@@ -2768,6 +2888,9 @@ bool wxWidgetCocoaImpl::DoHandleKeyEvent(NSEvent *event)
         wxKeyEvent eventHook(wxEVT_CHAR_HOOK, wxevent);
         if ( GetWXPeer()->OSXHandleKeyEvent(eventHook)
                 && !eventHook.IsNextEventAllowed() )
+            return true;
+
+        if (DoHandleKeyNavigation(wxevent))
             return true;
     }
 
@@ -2871,10 +2994,11 @@ void wxWidgetCocoaImpl::SetCursor(const wxCursor& cursor)
 {
     if ( !wxIsBusy() )
     {
-        NSPoint location = [NSEvent mouseLocation];
-        location = [[m_osxView window] convertScreenToBase:location];
-        NSPoint locationInView = [m_osxView convertPoint:location fromView:nil];
-
+        NSRect location = NSZeroRect;
+        location.origin = [NSEvent mouseLocation];
+        location = [[m_osxView window] convertRectFromScreen:location];
+        NSPoint locationInView = [m_osxView convertPoint:location.origin fromView:nil];        
+        
         if( NSMouseInRect(locationInView, [m_osxView bounds], YES) )
         {
             [(NSCursor*)cursor.GetHCURSOR() set];

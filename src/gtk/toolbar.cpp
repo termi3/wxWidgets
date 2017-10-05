@@ -56,6 +56,7 @@ public:
     void SetImage();
     void CreateDropDown();
     void ShowDropdown(GtkToggleButton* button);
+    virtual void SetLabel(const wxString& label) wxOVERRIDE;
 
     GtkToolItem* m_item;
 };
@@ -187,15 +188,13 @@ image_expose_event(GtkWidget* widget, GdkEventExpose*, wxToolBarTool* tool)
     // draw disabled bitmap ourselves, GtkImage has no way to specify it
     GtkAllocation alloc;
     gtk_widget_get_allocation(widget, &alloc);
-    GtkRequisition req;
-    gtk_widget_get_requisition(widget, &req);
+    int x = (alloc.width - bitmap.GetWidth()) / 2;
+    int y = (alloc.height - bitmap.GetHeight()) / 2;
 #ifdef __WXGTK3__
-    const int x = (alloc.width - req.width) / 2;
-    const int y = (alloc.height - req.height) / 2;
     bitmap.Draw(cr, x, y);
 #else
-    const int x = alloc.x + (alloc.width - req.width) / 2;
-    const int y = alloc.y + (alloc.height - req.height) / 2;
+    x += alloc.x;
+    y += alloc.y;
     gdk_draw_pixbuf(
         gtk_widget_get_window(widget), gtk_widget_get_style(widget)->black_gc, bitmap.GetPixbuf(),
         0, 0, x, y,
@@ -320,6 +319,36 @@ void wxToolBarTool::ShowDropdown(GtkToggleButton* button)
     }
 }
 
+void wxToolBarTool::SetLabel(const wxString& label)
+{
+    wxASSERT_MSG( IsButton(),
+       wxS("Label can be set for button tool only") );
+
+    if ( label == m_label )
+        return;
+
+    wxToolBarToolBase::SetLabel(label);
+    if ( IsButton() )
+    {
+        if ( !label.empty() )
+        {
+            wxString newLabel = wxControl::RemoveMnemonics(label);
+            gtk_tool_button_set_label(GTK_TOOL_BUTTON(m_item),
+                                      wxGTK_CONV(newLabel));
+            // To show the label for toolbar with wxTB_HORZ_LAYOUT.
+            gtk_tool_item_set_is_important(m_item, true);
+        }
+        else
+        {
+            gtk_tool_button_set_label(GTK_TOOL_BUTTON(m_item), NULL);
+            // To hide the label for toolbar with wxTB_HORZ_LAYOUT.
+            gtk_tool_item_set_is_important(m_item, false);
+        }
+    }
+
+    // TODO: Set label for control tool, if it's possible.
+}
+
 wxToolBarToolBase *wxToolBar::CreateTool(int id,
                                          const wxString& text,
                                          const wxBitmap& bitmap1,
@@ -388,7 +417,12 @@ bool wxToolBar::Create( wxWindow *parent,
 #endif
     GtkSetStyle();
 
-    if (style & wxTB_DOCKABLE)
+    if ((style & wxTB_DOCKABLE)
+#ifdef __WXGTK3__
+        // using GtkHandleBox prevents toolbar from drawing with GTK+ >= 3.19.7
+        && gtk_check_version(3,19,7)
+#endif
+        )
     {
         m_widget = gtk_handle_box_new();
 

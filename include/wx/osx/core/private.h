@@ -128,11 +128,7 @@ class wxSearchCtrl;
 
 WXDLLIMPEXP_CORE wxWindowMac * wxFindWindowFromWXWidget(WXWidget inControl );
 
-#if wxOSX_USE_CARBON
-typedef wxMacControl wxWidgetImplType;
-#else
 typedef wxWidgetImpl wxWidgetImplType;
-#endif
 
 #if wxUSE_MENUS
 class wxMenuItemImpl : public wxObject
@@ -292,6 +288,8 @@ public :
 #if wxUSE_MARKUP && wxOSX_USE_COCOA
     virtual void        SetLabelMarkup( const wxString& WXUNUSED(markup) ) { }
 #endif
+    virtual void        SetInitialLabel( const wxString& title, wxFontEncoding encoding )
+                            { SetLabel(title, encoding); }
 
     virtual void        SetCursor( const wxCursor & cursor ) = 0;
     virtual void        CaptureMouse() = 0;
@@ -345,6 +343,7 @@ public :
                         FindBestFromWXWidget(WXWidget control);
     
     static void         RemoveAssociations( wxWidgetImpl* impl);
+    static void         RemoveAssociation(WXWidget control);
 
     static void         Associate( WXWidget control, wxWidgetImpl *impl );
 
@@ -613,6 +612,7 @@ public:
     // display
 
     virtual void            ListScrollTo( unsigned int n ) = 0;
+    virtual int             ListGetTopItem() const = 0;
     virtual void            UpdateLine( unsigned int n, wxListWidgetColumn* col = NULL ) = 0;
     virtual void            UpdateLineToEnd( unsigned int n) = 0;
 
@@ -685,10 +685,12 @@ public :
     virtual int GetNumberOfLines() const ;
     virtual long XYToPosition(long x, long y) const;
     virtual bool PositionToXY(long pos, long *x, long *y) const ;
-    virtual void ShowPosition(long WXUNUSED(pos)) ;
+    virtual void ShowPosition(long pos) ;
     virtual int GetLineLength(long lineNo) const ;
     virtual wxString GetLineText(long lineNo) const ;
     virtual void CheckSpelling(bool WXUNUSED(check)) { }
+    virtual void EnableAutomaticQuoteSubstitution(bool WXUNUSED(enable)) {}
+    virtual void EnableAutomaticDashSubstitution(bool WXUNUSED(enable)) {}
 
     virtual wxSize GetBestSize() const { return wxDefaultSize; }
 

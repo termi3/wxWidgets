@@ -128,21 +128,31 @@ bool wxTextCtrl::Create( wxWindow *parent,
 void wxTextCtrl::MacSuperChangedPosition()
 {
     wxWindow::MacSuperChangedPosition() ;
-#if wxOSX_USE_CARBON
-    GetPeer()->SuperChangedPosition() ;
-#endif
 }
 
 void wxTextCtrl::MacVisibilityChanged()
 {
-#if wxOSX_USE_CARBON
-    GetPeer()->VisibilityChanged( GetPeer()->IsVisible() );
-#endif
 }
 
 void wxTextCtrl::MacCheckSpelling(bool check)
 {
     GetTextPeer()->CheckSpelling(check);
+}
+
+void wxTextCtrl::OSXEnableAutomaticQuoteSubstitution(bool enable)
+{
+    GetTextPeer()->EnableAutomaticQuoteSubstitution(enable);
+}
+
+void wxTextCtrl::OSXEnableAutomaticDashSubstitution(bool enable)
+{
+    GetTextPeer()->EnableAutomaticDashSubstitution(enable);
+}
+
+void wxTextCtrl::OSXDisableAllSmartSubstitutions()
+{
+    OSXEnableAutomaticDashSubstitution(false);
+    OSXEnableAutomaticQuoteSubstitution(false);
 }
 
 bool wxTextCtrl::SetFont( const wxFont& font )
@@ -184,36 +194,43 @@ bool wxTextCtrl::AcceptsFocus() const
 
 wxSize wxTextCtrl::DoGetBestSize() const
 {
+    int wText = -1;
+    int hText = -1;
+
     if (GetTextPeer())
     {
         wxSize size = GetTextPeer()->GetBestSize();
         if (size.x > 0 && size.y > 0)
-            return size;
+        {
+            hText = size.y;
+            wText = size.x;
+        }
     }
 
-    int wText, hText;
-
-    // these are the numbers from the HIG:
-    // we reduce them by the borders first
-    wText = 100 ;
-
-    switch ( m_windowVariant )
+    if ( hText == - 1)
     {
-        case wxWINDOW_VARIANT_NORMAL :
-            hText = 22 - 6 ;
-            break ;
+        // these are the numbers from the HIG:
+        // we reduce them by the borders first
+        wText = 100 ;
 
-        case wxWINDOW_VARIANT_SMALL :
-            hText = 19 - 6 ;
-            break ;
+        switch ( m_windowVariant )
+        {
+            case wxWINDOW_VARIANT_NORMAL :
+                hText = 22 - 6 ;
+                break ;
 
-        case wxWINDOW_VARIANT_MINI :
-            hText = 15 - 6 ;
-            break ;
+            case wxWINDOW_VARIANT_SMALL :
+                hText = 19 - 6 ;
+                break ;
 
-        default :
-            hText = 22 - 6;
-            break ;
+            case wxWINDOW_VARIANT_MINI :
+                hText = 15 - 6 ;
+                break ;
+
+            default :
+                hText = 22 - 6;
+                break ;
+        }
     }
 
     // as the above numbers have some free space around the text
@@ -457,19 +474,6 @@ void wxTextCtrl::OnChar(wxKeyEvent& event)
     }
 
     // osx_cocoa sends its event upon insertText
-#if wxOSX_USE_CARBON
-    if ( ( key >= 0x20 && key < WXK_START ) ||
-         ( key >= WXK_NUMPAD0 && key <= WXK_DIVIDE ) ||
-         key == WXK_RETURN ||
-         key == WXK_DELETE ||
-         key == WXK_NUMPAD_ENTER ||
-         key == WXK_BACK)
-    {
-        wxCommandEvent event1(wxEVT_TEXT, m_windowId);
-        event1.SetEventObject( this );
-        wxPostEvent( GetEventHandler(), event1 );
-    }
-#endif
 }
 
 void wxTextCtrl::Command(wxCommandEvent & event)

@@ -10,31 +10,29 @@
 #ifndef _WX_MSW_DEBUGHLPH_H_
 #define _WX_MSW_DEBUGHLPH_H_
 
-#include "wx/dynlib.h"
-
-#include "wx/msw/wrapwin.h"
-#include <imagehlp.h>
-#include "wx/msw/private.h"
-
-// wxUSE_DBGHELP can be predefined on the compiler command line to force using
-// dbghelp.dll even if it's not detected or, on the contrary, avoid using even
-// if it's available.
-#ifndef wxUSE_DBGHELP
-    // The only compiler which is known to have the necessary headers is MSVC.
-    #ifdef __VISUALC__
-        // MSVC7.1 shipped with API v9 and we don't support anything earlier
-        // anyhow.
-        #if API_VERSION_NUMBER >= 9
-            #define wxUSE_DBGHELP 1
-        #else
-            #define wxUSE_DBGHELP 0
-        #endif
-    #else
-        #define wxUSE_DBGHELP 0
-    #endif
-#endif
+#include "wx/defs.h"
 
 #if wxUSE_DBGHELP
+
+#include "wx/dynlib.h"
+#include "wx/msw/wrapwin.h"
+
+#ifdef __VISUALC__
+    // Disable a warning that we can do nothing about: we get it at least for
+    // imagehlp.h from 8.1 Windows kit when using VC14.
+    #pragma warning(push)
+
+    // 'typedef ': ignored on left of '' when no variable is declared
+    #pragma warning(disable:4091)
+#endif
+
+#include <imagehlp.h>
+
+#ifdef __VISUALC__
+  #pragma warning(pop)
+#endif
+
+#include "wx/msw/private.h"
 
 /*
 

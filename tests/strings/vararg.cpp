@@ -101,9 +101,16 @@ void VarArgTestCase::StringPrintf()
     CPPUNIT_ASSERT( s2 == "value=FooBar;" );
 
     // this tests correct passing of wxCStrData constructed from string
-    // literal:
+    // literal (and we disable the warnings related to the use of a literal
+    // here because we want to test that this compiles, even with warnings):
+    wxGCC_WARNING_SUPPRESS(write-strings)
+    wxCLANG_WARNING_SUPPRESS(c++11-compat-deprecated-writable-strings)
+
     bool cond = true;
     s2.Printf(wxT("foo %s"), !cond ? s.c_str() : wxT("bar"));
+
+    wxGCC_WARNING_RESTORE(write-strings)
+    wxCLANG_WARNING_RESTORE(c++11-compat-deprecated-writable-strings)
 }
 
 void VarArgTestCase::CharPrintf()
@@ -132,8 +139,10 @@ void VarArgTestCase::CharPrintf()
     #ifdef _MSC_VER
         #pragma warning(default:4309)
     #endif
+    #ifndef __CHAR_UNSIGNED__
     s.Printf("value is %i (int)", c);
     CPPUNIT_ASSERT_EQUAL( wxString("value is -16 (int)"), s );
+    #endif
 
     unsigned char u = 240;
     s.Printf("value is %i (int)", u);

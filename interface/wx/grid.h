@@ -461,7 +461,7 @@ public:
         Draws the part of the cell not occupied by the control: the base class
         version just fills it with background colour from the attribute.
     */
-    virtual void PaintBackground(wxDC& dc, const wxRect& rectCell, wxGridCellAttr& attr);
+    virtual void PaintBackground(wxDC& dc, const wxRect& rectCell, const wxGridCellAttr& attr);
 
     /**
         Reset the value in the control back to its starting value.
@@ -626,7 +626,7 @@ public:
     @class wxGridCellEnumEditor
 
     Grid cell editor which displays an enum number as a textual equivalent
-    (eg. data in cell is 0,1,2 ... n the cell could be displayed as
+    (e.g. data in cell is 0,1,2 ... n the cell could be displayed as
     "John","Fred"..."Bob" in the combo choice box).
 
     @library{wxadv}
@@ -801,7 +801,10 @@ public:
         Row,
 
         /// Return the attribute set for this cells column.
-        Col
+        Col,
+
+        Default,
+        Merged
     };
 
     /**
@@ -977,6 +980,22 @@ public:
         Sets the text colour.
     */
     void SetTextColour(const wxColour& colText);
+
+    
+    void MergeWith(wxGridCellAttr *mergefrom);
+
+    void SetSize(int num_rows, int num_cols);
+    void SetOverflow(bool allow = true);
+    void SetKind(wxAttrKind kind);
+
+    bool HasReadWriteMode() const;
+    bool HasOverflowMode() const;
+    bool HasSize() const;
+
+    void GetSize(int *num_rows, int *num_cols) const;
+    bool GetOverflow() const;
+    wxAttrKind GetKind();
+
 
 protected:
 
@@ -1198,12 +1217,12 @@ public:
     virtual wxGridCellAttr *GetAttr(int row, int col,
                                     wxGridCellAttr::wxAttrKind kind) const;
 
-    /**
-        Setting attributes.
+    /*!
+        @name Setting attributes.
 
         All these functions take ownership of the attribute passed to them,
         i.e. will call DecRef() on it themselves later and so it should not be
-        destroyed by the caller. And the attribute can be @NULL to reset a
+        destroyed by the caller. The attribute can be @NULL to reset a
         previously set value.
      */
     //@{
@@ -1220,7 +1239,7 @@ public:
     //@}
 
     /**
-        Getting header renderers.
+        @name Getting header renderers.
 
         These functions return the renderers for the given row or column header
         label and the corner window. Unlike cell attributes, these objects are
@@ -1262,6 +1281,114 @@ public:
     virtual const wxGridCornerHeaderRenderer& GetCornerRenderer();
 
     //@}
+};
+
+/**
+    Message class used by the grid table to send requests and notifications to
+    the grid view.
+
+    A message object of this class must be sent to the grid using
+    wxGrid::ProcessTableMessage() every time the table changes, e.g. rows are
+    added/deleted. The messages are just notifications and don't result in any
+    actual changes but just allow the view to react to changes to the model.
+*/
+class wxGridTableMessage
+{
+public:
+    /**
+        Default constructor initializes the object to invalid state.
+     */
+    wxGridTableMessage();
+
+    /**
+        Constructor really initialize the message.
+
+        @param table Pointer to the grid table
+        @param id One of wxGridTableRequest enum elements.
+        @param comInt1 Position after which the rows are inserted/deleted
+        @param comInt2 Number of rows to be inserted/deleted
+    */
+    wxGridTableMessage(wxGridTableBase *table, int id, int comInt1 = -1, int comInt2 = -1);
+
+    /**
+        Sets the table object
+    */
+    void SetTableObject( wxGridTableBase *table );
+
+    /**
+        Gets the table object
+    */
+    wxGridTableBase * GetTableObject() const;
+
+    /**
+        Sets an id
+    */
+    void SetId( int id );
+
+    /**
+        Gets an id
+    */
+    int  GetId();
+
+    /**
+        Set the position after which the insertion/deletion occur
+    */
+    void SetCommandInt( int comInt1 );
+
+    /**
+        Get the position after which the insertion/deletion occur
+    */
+    int  GetCommandInt();
+
+    /**
+        Set the number of rows to be inserted/deleted
+    */
+    void SetCommandInt2( int comInt2 );
+
+    /**
+        Get the number of rows to be inserted/deleted
+    */
+    int  GetCommandInt2();
+};
+
+
+/**
+    Simplest type of data table for a grid for small tables of strings that are
+    stored in memory.
+
+    The number of rows and columns in the table can be specified initially but
+    may also be changed later dynamically.
+ */
+class wxGridStringTable
+{
+public:
+    /**
+        Default constructor creates an empty table.
+     */
+    wxGridStringTable();
+
+    /**
+        Constructor taking number of rows and columns.
+     */
+    wxGridStringTable( int numRows, int numCols );
+
+    virtual int GetNumberRows();
+    virtual int GetNumberCols();
+    virtual wxString GetValue( int row, int col );
+    virtual void SetValue( int row, int col, const wxString& s );
+
+    void Clear();
+    bool InsertRows( size_t pos = 0, size_t numRows = 1 );
+    bool AppendRows( size_t numRows = 1 );
+    bool DeleteRows( size_t pos = 0, size_t numRows = 1 );
+    bool InsertCols( size_t pos = 0, size_t numCols = 1 );
+    bool AppendCols( size_t numCols = 1 );
+    bool DeleteCols( size_t pos = 0, size_t numCols = 1 );
+
+    void SetRowLabelValue( int row, const wxString& );
+    void SetColLabelValue( int col, const wxString& );
+    wxString GetRowLabelValue( int row );
+    wxString GetColLabelValue( int col );
 };
 
 /**
@@ -1557,13 +1684,14 @@ public:
     virtual wxGrid *GetView() const;
 
 
-    /**
+    /*!
         @name Table Structure Modifiers
 
-        Notice that none of these functions are pure virtual as they don't have
+        Note that none of these functions are pure virtual as they don't have
         to be implemented if the table structure is never modified after
-        creation, i.e. neither rows nor columns are never added or deleted but
-        that you do need to implement them if they are called, i.e. if your
+        creation, i.e. neither rows nor columns are ever added or deleted.
+
+        Also note that you do need to implement them if they are called, i.e. if your
         code either calls them directly or uses the matching wxGrid methods, as
         by default they simply do nothing which is definitely inappropriate.
      */
@@ -1629,11 +1757,11 @@ public:
 
     //@}
 
-    /**
+    /*!
         @name Table Row and Column Labels
 
-        By default the numbers are used for labeling rows and Latin letters for
-        labeling columns. If the table has more than 26 columns, the pairs of
+        By default the numbers are used for labelling rows and Latin letters for
+        labelling columns. If the table has more than 26 columns, the pairs of
         letters are used starting from the 27-th one and so on, i.e. the
         sequence of labels is A, B, ..., Z, AA, AB, ..., AZ, BA, ..., ..., ZZ,
         AAA, ...
@@ -1752,83 +1880,24 @@ public:
 };
 
 
-
+/**
+    Possible types for grid table notifications.
+ */
 enum wxGridTableRequest
 {
-    wxGRIDTABLE_REQUEST_VIEW_GET_VALUES = 2000,
-    wxGRIDTABLE_REQUEST_VIEW_SEND_VALUES,
+    /// New rows have been inserted into the table.
     wxGRIDTABLE_NOTIFY_ROWS_INSERTED,
+    /// New rows have been append to the table.
     wxGRIDTABLE_NOTIFY_ROWS_APPENDED,
+    /// Rows have been deleted from the table.
     wxGRIDTABLE_NOTIFY_ROWS_DELETED,
+    /// New columns have been inserted into the table.
     wxGRIDTABLE_NOTIFY_COLS_INSERTED,
+    /// New columns have been append to the table.
     wxGRIDTABLE_NOTIFY_COLS_APPENDED,
+    /// Columns have been deleted from the table.
     wxGRIDTABLE_NOTIFY_COLS_DELETED
 };
-
-
-/**
-   @class wxGridTableMessage
-
-   A simple class used to pass messages from the table to the grid.
-
-    @library{wxadv}
-    @category{grid}
-*/
-class wxGridTableMessage
-{
-public:
-    wxGridTableMessage();
-    wxGridTableMessage( wxGridTableBase *table, int id,
-                        int comInt1 = -1,
-                        int comInt2 = -1 );
-
-    void SetTableObject( wxGridTableBase *table );
-    wxGridTableBase * GetTableObject() const;
-    void SetId( int id );
-    int  GetId();
-    void SetCommandInt( int comInt1 );
-    int  GetCommandInt();
-    void SetCommandInt2( int comInt2 );
-    int  GetCommandInt2();
-};
-
-
-
-/**
-   @class wxGridStringTable
-
-   Simplest type of data table for a grid for small tables of strings
-   that are stored in memory
-*/
-class wxGridStringTable : public wxGridTableBase
-{
-public:
-    wxGridStringTable();
-    wxGridStringTable( int numRows, int numCols );
-
-    // these are pure virtual in wxGridTableBase
-    virtual int GetNumberRows();
-    virtual int GetNumberCols();
-    virtual wxString GetValue( int row, int col );
-    virtual void SetValue( int row, int col, const wxString& value );
-
-    // overridden functions from wxGridTableBase
-    void Clear();
-    bool InsertRows( size_t pos = 0, size_t numRows = 1 );
-    bool AppendRows( size_t numRows = 1 );
-    bool DeleteRows( size_t pos = 0, size_t numRows = 1 );
-    bool InsertCols( size_t pos = 0, size_t numCols = 1 );
-    bool AppendCols( size_t numCols = 1 );
-    bool DeleteCols( size_t pos = 0, size_t numCols = 1 );
-
-    void SetRowLabelValue( int row, const wxString& );
-    void SetColLabelValue( int col, const wxString& );
-    wxString GetRowLabelValue( int row );
-    wxString GetColLabelValue( int col );
-};
-
-
-
 
 
 
@@ -2413,7 +2482,7 @@ public:
     //@}
 
 
-    /**
+    /*!
         @name Cell Formatting
 
         Note that wxGridCellAttr can be used alternatively to most of these
@@ -2555,7 +2624,7 @@ public:
     //@}
 
 
-    /**
+    /*!
         @name Cell Values, Editors, and Renderers
 
         Note that wxGridCellAttr can be used alternatively to most of these
@@ -2737,6 +2806,13 @@ public:
         Returns @true if the in-place edit control is currently enabled.
     */
     bool IsCellEditControlEnabled() const;
+
+    /**
+        Returns @true if the in-place edit control is currently shown.
+
+        @see HideCellEditControl()
+    */
+    bool IsCellEditControlShown() const;
 
     /**
         Returns @true if the current cell is read-only.
@@ -3695,6 +3771,21 @@ public:
     void ClearSelection();
 
     /**
+        Deselects a row of cells.
+    */
+    void DeselectRow( int row );
+
+    /**
+        Deselects a column of cells.
+    */
+    void DeselectCol( int col );
+
+    /**
+        Deselects a cell.
+    */
+    void DeselectCell( int row, int col );
+
+    /**
         Returns an array of individually selected cells.
 
         Notice that this array does @em not contain all the selected cells in
@@ -4324,6 +4415,16 @@ public:
                  const wxGridCellCoords& topLeft = wxGridCellCoords( -1, -1 ),
                  const wxGridCellCoords& bottomRight = wxGridCellCoords( -1, -1 ),
                  int style = wxGRID_DRAW_DEFAULT );
+
+    /**
+        Sets the cell attributes for the specified cell.
+
+        The grid takes ownership of the attribute pointer.
+
+        See the wxGridCellAttr class for more information about controlling
+        cell attributes.
+    */
+    void SetAttr(int row, int col, wxGridCellAttr *attr);
 
     /**
         Sets the cell attributes for all cells in the specified column.

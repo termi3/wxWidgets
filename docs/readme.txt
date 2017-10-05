@@ -1,4 +1,4 @@
-wxWidgets 3.1.0 Release Notes
+wxWidgets 3.1.1 Release Notes
 =============================
 
 Welcome to the latest development release of wxWidgets, a free and open source
@@ -16,17 +16,40 @@ more about wxWidgets at:
 
 Documentation is available online at:
 
-* http://docs.wxwidgets.org/3.1.0/
+* http://docs.wxwidgets.org/3.1.1/
 
 wxWidgets sources and binaries for the selected platforms are available for
 download from:
 
-* https://github.com/wxWidgets/wxWidgets/releases/tag/v3.1.0/
+* https://github.com/wxWidgets/wxWidgets/releases/tag/v3.1.1/
 
 
 Changes
 -------
 
+Compared to the stable 3.0.x series, this version brings many
+improvements and even more bug fixes, please see the change log
+
+https://raw.githubusercontent.com/wxWidgets/wxWidgets/v3.1.1/docs/changes.txt
+
+for the incomplete list of the most important ones. Here is the
+maximally condensed summary:
+
+- New classes: wxActivityIndicator, wxAddRemoveCtrl,
+  wxAppProgressIndicator, wxNativeWindow, wxPowerResourceBlocker.
+- And methods: wxDateTime::GetWeekBasedYear(), wxListBox::GetTopItem(),
+  wxProcess::Activate(), wxTextEntry::ForceUpper(), several ones in
+  wxRendererNative, wxStandardPaths::GetUserDir(), wxUIActionSimulator
+  ::Select() and many others. Also new wxEVT_MAGNIFY event.
+- Significant improvements to: wxBusyInfo, wxNotificationMessage.
+- All around better support for high DPI monitors.
+- Much newer versions of bundled 3rd party libraries (notably libpng)
+  and support for GStreamer 1.0 under Unix.
+- Revamped OpenGL support better suited to modern OpenGL (3.2+).
+- Further C++11 support improvements.
+- Support for latest compilers: MSVS 2015, g++ 5.3, clang 3.8.
+- A lot of bug fixes in wxGTK3 and wxOSX/Cocoa ports.
+- New experimental wxQt port.
 
 
 
@@ -37,18 +60,17 @@ wxWidgets currently supports the following primary platforms:
 
 * Windows XP, Vista, 7, 8 and 10 (32/64 bits).
 * Most Unix variants using the GTK+ toolkit (version 2.6 or newer)
-* Mac OS X (10.7 or newer) using Cocoa (32/64 bits) or Carbon (32 only)
+* OS X (10.7 or newer) using Cocoa (32/64 bits)
 
 There is some support for the following platforms:
 
 * Most Unix variants with X11
 * Most Unix variants with Motif/Lesstif
 * Most Unix variants with GTK+ 1.2
-* Most Unix variants with Qt 5 or newer
+* Most Unix variants with Qt 5 or newer (experimental)
 
 Most popular C++ compilers are supported; see the install.txt file for each
-platform (available via docs/html/index.htm) and
-https://wiki.wxwidgets.org/Supported_Platforms for the most up to date status.
+platform (following the links from docs/index.htm).
 
 
 Files
@@ -56,7 +78,7 @@ Files
 
 wxWidgets is distributed in source form in several archive formats. ZIP and 7z
 archives are for Microsoft Windows users and contain the files with DOS/Windows
-line endings while the compressed tar archives for Unix systems users (including
+line endings while the compressed tar archives are for Unix systems (including
 OS X) and contain the files with Unix line endings. Please notice that some
 Windows tools still don't accept files with Unix line endings and that compiling
 sources with DOS line endings under Unix will fail, so please choose the correct
@@ -123,7 +145,7 @@ Reporting Bugs
 
 The wxWidgets bug tracker can be found here:
 
-* http://trac.wxwidgets.org/newticket
+* https://trac.wxwidgets.org/newticket
 
 Please use the search function of our Trac installation to find any possibly
 relevant bugs before reporting new ones. Also please notice that often trying to
@@ -146,4 +168,4 @@ If you are looking for support, you can get it from
 
 Have fun!
 
-The wxWidgets Team, October 2015
+The wxWidgets Team, February 2016

@@ -492,6 +492,15 @@ extern int wxOSXGetIdFromSelector(SEL action );
     wxNonOwnedWindowCocoaImpl* windowimpl = [window WX_implementation];
     if ( windowimpl )
     {
+        // See windowDidResignKey: -- we emulate corresponding focus set
+        // event for the first responder here as well:
+        NSResponder *firstResponder = [window firstResponder];
+        wxWidgetCocoaImpl *focused = firstResponder
+                ? (wxWidgetCocoaImpl*)wxWidgetImpl::FindFromWXWidget(wxOSXGetViewFromResponder(firstResponder))
+                : NULL;
+        if ( focused )
+            focused->DoNotifyFocusSet();
+
         wxNonOwnedWindow* wxpeer = windowimpl->GetWXPeer();
         if ( wxpeer )
             wxpeer->HandleActivated(0, true);
@@ -508,10 +517,17 @@ extern int wxOSXGetIdFromSelector(SEL action );
         if ( wxpeer )
         {
             wxpeer->HandleActivated(0, false);
-            // as for wx the deactivation also means losing focus we
-            // must trigger this manually
-            [window makeFirstResponder:nil];
-            
+
+            // As for wx the deactivation also means losing focus, we
+            // must emulate focus events _without_ resetting first responder
+            // (because that would subtly break other things in Cocoa/macOS):
+            NSResponder *firstResponder = [window firstResponder];
+            wxWidgetCocoaImpl *focused = firstResponder
+                    ? (wxWidgetCocoaImpl*)wxWidgetImpl::FindFromWXWidget(wxOSXGetViewFromResponder(firstResponder))
+                    : NULL;
+            if ( focused )
+                focused->DoNotifyFocusLost();
+
             // TODO Remove if no problems arise with Popup Windows
 #if 0
             // Needed for popup window since the firstResponder
@@ -655,7 +671,7 @@ long style, long extraStyle, const wxString& WXUNUSED(name) )
 
     [m_macWindow setAcceptsMouseMovedEvents:YES];
 
-    CGWindowLevel level = kCGNormalWindowLevel;
+    NSInteger level = NSNormalWindowLevel;
 
     if ( style & wxFRAME_TOOL_WINDOW )
     {
@@ -663,7 +679,7 @@ long style, long extraStyle, const wxString& WXUNUSED(name) )
     }
     else if ( ( style & wxPOPUP_WINDOW ) )
     {
-        level = kCGPopUpMenuWindowLevel;
+        level = NSPopUpMenuWindowLevel;
     }
     else if ( ( style & wxFRAME_DRAWER ) )
     {
@@ -693,10 +709,10 @@ long style, long extraStyle, const wxString& WXUNUSED(name) )
         windowstyle |= NSTexturedBackgroundWindowMask;
 
     if ( ( style & wxFRAME_FLOAT_ON_PARENT ) || ( style & wxFRAME_TOOL_WINDOW ) )
-        level = kCGFloatingWindowLevel;
+        level = NSFloatingWindowLevel;
 
     if ( ( style & wxSTAY_ON_TOP ) )
-        level = kCGUtilityWindowLevel;
+        level = NSModalPanelWindowLevel;
 
     NSRect r = wxToNSRect( NULL, wxRect( pos, size) );
 
@@ -718,20 +734,20 @@ long style, long extraStyle, const wxString& WXUNUSED(name) )
     }
     
     // If the parent is modal, windows with wxFRAME_FLOAT_ON_PARENT style need
-    // to be in kCGUtilityWindowLevel and not kCGFloatingWindowLevel to stay
+    // to be in NSModalPanelWindowLevel and not NSFloatingWindowLevel to stay
     // above the parent.
     wxDialog * const parentDialog = parent == NULL ? NULL : wxDynamicCast(parent->MacGetTopLevelWindow(), wxDialog);
     if (parentDialog && parentDialog->IsModal())
     {
-        if (level == kCGFloatingWindowLevel)
+        if (level == NSFloatingWindowLevel)
         {
-            level = kCGUtilityWindowLevel;
+            level = NSModalPanelWindowLevel;
         }
 
         // Cocoa's modal loop does not process other windows by default, but
         // don't call this on normal window levels so nested modal dialogs will
         // still behave modally.
-        if (level != kCGNormalWindowLevel)
+        if (level != NSNormalWindowLevel)
         {
             if ([m_macWindow isKindOfClass:[NSPanel class]])
             {
@@ -790,14 +806,23 @@ bool wxNonOwnedWindowCocoaImpl::Show(bool show)
         {
             // add to parent window before showing
             wxDialog * const dialog = wxDynamicCast(wxpeer, wxDialog);
-            if ( wxpeer->GetParent() && dialog && dialog->IsModal())
+            if ( wxpeer->GetParent() && dialog )
             {
                 NSView * parentView = wxpeer->GetParent()->GetPeer()->GetWXWidget();
                 if ( parentView )
                 {
                     NSWindow* parentNSWindow = [parentView window];
-                    if ( parentNSWindow )
+                    if ( parentNSWindow ) {
                         [parentNSWindow addChildWindow:m_macWindow ordered:NSWindowAbove];
+                        // If the parent is modal, windows with wxFRAME_FLOAT_ON_PARENT style need
+                        // to be in NSModalPanelWindowLevel and not NSFloatingWindowLevel to stay
+                        // above the parent.
+                        if ([m_macWindow level] == NSFloatingWindowLevel ||
+                            [m_macWindow level] == NSModalPanelWindowLevel) {
+                            m_macWindowLevel = NSModalPanelWindowLevel;
+                            [m_macWindow setLevel:m_macWindowLevel];
+                        }
+                    }
                 }
             }
             
@@ -865,12 +890,12 @@ void wxNonOwnedWindowCocoaImpl::SetWindowStyleFlag( long style )
     // don't mess with native wrapped windows, they might throw an exception when their level is changed
     if (!m_wxPeer->IsNativeWindowWrapper() && m_macWindow)
     {
-        CGWindowLevel level = kCGNormalWindowLevel;
+        NSInteger level = NSNormalWindowLevel;
         
         if (style & wxSTAY_ON_TOP)
-            level = kCGUtilityWindowLevel;
+            level = NSModalPanelWindowLevel;
         else if (( style & wxFRAME_FLOAT_ON_PARENT ) || ( style & wxFRAME_TOOL_WINDOW ))
-            level = kCGFloatingWindowLevel;
+            level = NSFloatingWindowLevel;
         
         [m_macWindow setLevel: level];
         m_macWindowLevel = level;
@@ -1110,9 +1135,10 @@ void wxNonOwnedWindowCocoaImpl::RequestUserAttention(int flagsWX)
 void wxNonOwnedWindowCocoaImpl::ScreenToWindow( int *x, int *y )
 {
     wxPoint p((x ? *x : 0), (y ? *y : 0) );
-    NSPoint nspt = wxToNSPoint( NULL, p );
-    nspt = [m_macWindow convertScreenToBase:nspt];
-    nspt = [[m_macWindow contentView] convertPoint:nspt fromView:nil];
+    NSRect nsrect = NSZeroRect;
+    nsrect.origin = wxToNSPoint( NULL, p );
+    nsrect = [m_macWindow convertRectFromScreen:nsrect];
+    NSPoint nspt = [[m_macWindow contentView] convertPoint:nsrect.origin fromView:nil];
     p = wxFromNSPoint([m_macWindow contentView], nspt);
     if ( x )
         *x = p.x;
@@ -1125,8 +1151,10 @@ void wxNonOwnedWindowCocoaImpl::WindowToScreen( int *x, int *y )
     wxPoint p((x ? *x : 0), (y ? *y : 0) );
     NSPoint nspt = wxToNSPoint( [m_macWindow contentView], p );
     nspt = [[m_macWindow contentView] convertPoint:nspt toView:nil];
-    nspt = [m_macWindow convertBaseToScreen:nspt];
-    p = wxFromNSPoint( NULL, nspt);
+    NSRect nsrect = NSZeroRect;
+    nsrect.origin = nspt;
+    nsrect = [m_macWindow convertRectToScreen:nsrect];
+    p = wxFromNSPoint( NULL, nsrect.origin);
     if ( x )
         *x = p.x;
     if ( y )

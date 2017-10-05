@@ -44,34 +44,34 @@
     #error "Please set wxUSE_PROPGRID to 1 and rebuild the library."
 #endif
 
-#include <wx/numdlg.h>
+#include "wx/numdlg.h"
 
 // -----------------------------------------------------------------------
 
 
 // Main propertygrid header.
-#include <wx/propgrid/propgrid.h>
+#include "wx/propgrid/propgrid.h"
 
 // Extra property classes.
-#include <wx/propgrid/advprops.h>
+#include "wx/propgrid/advprops.h"
 
 // This defines wxPropertyGridManager.
-#include <wx/propgrid/manager.h>
+#include "wx/propgrid/manager.h"
 
 #include "propgrid.h"
 #include "sampleprops.h"
 
 #if wxUSE_DATEPICKCTRL
-    #include <wx/datectrl.h>
+    #include "wx/datectrl.h"
 #endif
 
-#include <wx/artprov.h>
+#include "wx/artprov.h"
 
 #ifndef wxHAS_IMAGES_IN_RESOURCES
     #include "../sample.xpm"
 #endif
 
-#include <wx/popupwin.h>
+#include "wx/popupwin.h"
 
 // -----------------------------------------------------------------------
 // wxSampleMultiButtonEditor
@@ -2039,7 +2039,7 @@ FormMain::FormMain(const wxString& title, const wxPoint& pos, const wxSize& size
     menuTools1->Append(ID_APPENDPROP, wxT("Append New Property") );
     menuTools1->Append(ID_APPENDCAT, wxT("Append New Category\tCtrl-S") );
     menuTools1->AppendSeparator();
-    menuTools1->Append(ID_INSERTPROP, wxT("Insert New Property\tCtrl-Q") );
+    menuTools1->Append(ID_INSERTPROP, wxT("Insert New Property\tCtrl-I") );
     menuTools1->Append(ID_INSERTCAT, wxT("Insert New Category\tCtrl-W") );
     menuTools1->AppendSeparator();
     menuTools1->Append(ID_DELETE, wxT("Delete Selected") );
@@ -3002,7 +3002,7 @@ void FormMain::OnDeleteChoice( wxCommandEvent& WXUNUSED(event) )
 
 // -----------------------------------------------------------------------
 
-#include <wx/colordlg.h>
+#include "wx/colordlg.h"
 
 void FormMain::OnMisc ( wxCommandEvent& event )
 {
@@ -3050,10 +3050,10 @@ void FormMain::OnMisc ( wxCommandEvent& event )
     else if ( id == ID_COLLAPSE )
     {
         // Collapses selected.
-        wxPGProperty* id = m_pPropGridManager->GetSelection();
-        if ( id )
+        wxPGProperty* selProp = m_pPropGridManager->GetSelection();
+        if ( selProp )
         {
-            m_pPropGridManager->Collapse(id);
+            m_pPropGridManager->Collapse(selProp);
         }
     }
     else if ( id == ID_RUNTESTFULL )

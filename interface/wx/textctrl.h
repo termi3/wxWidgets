@@ -29,8 +29,6 @@
 
 // automatically detect the URLs and generate the events when mouse is
 // moved/clicked over an URL
-//
-// this is for Win32 richedit and wxGTK2 multiline controls only so far
 #define wxTE_AUTO_URL       0x1000
 
 // by default, the Windows text control doesn't show the selection when it
@@ -967,8 +965,7 @@ public:
            ignored under other platforms
     @style{wxTE_AUTO_URL}
            Highlight the URLs and generate the wxTextUrlEvents when mouse
-           events occur over them. This style is only supported for wxTE_RICH
-           Win32 and multi-line wxGTK2 text controls.
+           events occur over them.
     @style{wxTE_NOHIDESEL}
            By default, the Windows text control doesn't show the selection
            when it doesn't have focus - use this style to force it to always
@@ -979,28 +976,28 @@ public:
     @style{wxTE_NO_VSCROLL}
            For multiline controls only: vertical scrollbar will never be
            created. This limits the amount of text which can be entered into
-           the control to what can be displayed in it under MSW but not under
-           GTK2. Currently not implemented for the other platforms.
+           the control to what can be displayed in it under wxMSW but not under
+           wxGTK or wxOSX. Currently not implemented for the other platforms.
     @style{wxTE_LEFT}
            The text in the control will be left-justified (default).
     @style{wxTE_CENTRE}
-           The text in the control will be centered (currently wxMSW and
-           wxGTK2 only).
+           The text in the control will be centered (wxMSW, wxGTK, wxOSX).
     @style{wxTE_RIGHT}
-           The text in the control will be right-justified (currently wxMSW
-           and wxGTK2 only).
+           The text in the control will be right-justified (wxMSW, wxGTK,
+           wxOSX).
     @style{wxTE_DONTWRAP}
            Same as wxHSCROLL style: don't wrap at all, show horizontal
            scrollbar instead.
     @style{wxTE_CHARWRAP}
-           Wrap the lines too long to be shown entirely at any position
-           (wxUniv and wxGTK2 only).
+           For multiline controls only: wrap the lines too long to be shown
+           entirely at any position (wxUniv, wxGTK, wxOSX).
     @style{wxTE_WORDWRAP}
-           Wrap the lines too long to be shown entirely at word boundaries
-           (wxUniv and wxGTK2 only).
+           For multiline controls only: wrap the lines too long to be shown
+           entirely at word boundaries (wxUniv, wxMSW, wxGTK, wxOSX).
     @style{wxTE_BESTWRAP}
-           Wrap the lines at word boundaries or at any other character if
-           there are words longer than the window width (this is the default).
+           For multiline controls only: wrap the lines at word boundaries
+           or at any other character if there are words longer than the window
+           width (this is the default).
     @style{wxTE_CAPITALIZE}
            On PocketPC and Smartphone, causes the first letter to be
            capitalized.
@@ -1148,8 +1145,7 @@ public:
         pressed in a text control which must have wxTE_PROCESS_ENTER style for
         this event to be generated.
     @event{EVT_TEXT_URL(id, func)}
-        A mouse event occurred over an URL in the text control (wxMSW and
-        wxGTK2 only currently).
+        A mouse event occurred over an URL in the text control.
     @event{EVT_TEXT_MAXLEN(id, func)}
         This event is generated when the user tries to enter more text into the
         control than the limit set by wxTextCtrl::SetMaxLength(), see its description.
@@ -1283,7 +1279,7 @@ public:
         The returned number is the number of logical lines, i.e. just the count
         of the number of newline characters in the control + 1, for wxGTK and
         wxOSX/Cocoa ports while it is the number of physical lines, i.e. the
-        count of lines actually shown in the control, in wxMSW and wxOSX/Carbon.
+        count of lines actually shown in the control, in wxMSW.
         Because of this discrepancy, it is not recommended to use this function.
 
         @remarks
@@ -1308,9 +1304,9 @@ public:
     /**
         Finds the position of the character at the specified point.
 
-        If the return code is not @c wxTE_HT_UNKNOWN the row and column of the
-        character closest to this position are returned, otherwise the output
-        parameters are not modified.
+        If the return code is not @c wxTE_HT_UNKNOWN the position of the
+        character closest to this position is returned, otherwise the output
+        parameter is not modified.
 
         Please note that this function is currently only implemented in wxUniv,
         wxMSW and wxGTK2 ports and always returns @c wxTE_HT_UNKNOWN in the
@@ -1318,7 +1314,7 @@ public:
 
         @beginWxPerlOnly
         In wxPerl this function takes only the @a pt argument and
-        returns a 3-element list (result, col, row).
+        returns a 2-element list (result, pos).
         @endWxPerlOnly
 
         @param pt
@@ -1480,7 +1476,10 @@ public:
 
     /**
         Changes the default style to use for the new text which is going to be
-        added to the control using WriteText() or AppendText().
+        added to the control.
+
+        This applies both to the text added programmatically using WriteText()
+        or AppendText() and to the text entered by the user interactively.
 
         If either of the font, foreground, or background colour is not set in
         @a style, the values of the previous default style are used for them.
@@ -1614,7 +1613,7 @@ public:
         inheriting wxTextCtrl from @c std::streambuf in which case this class is
         not compiled in.
         You also must have @c wxUSE_STD_IOSTREAM option on (i.e. set to 1) in your
-        @c setup.h to be able to use it. Under Unix, specify @c --enable-std_iostreams
+        @c setup.h to be able to use it. Under Unix, specify @c \--enable-std_iostreams
         switch when running configure for this.
 
     Example of usage:

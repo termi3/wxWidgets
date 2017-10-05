@@ -515,13 +515,13 @@ void wxPGProperty::Init()
 
 void wxPGProperty::Init( const wxString& label, const wxString& name )
 {
-    // We really need to check if &label and &name are NULL pointers
-    // (this can if we are called before property grid has been initialized)
+    // wxPG_LABEL reference can be NULL if we are called before property
+    // grid has been initialized
 
-    if ( (&label) != NULL && label != wxPG_LABEL )
+    if ( sm_wxPG_LABEL && label != wxPG_LABEL )
         m_label = label;
 
-    if ( (&name) != NULL && name != wxPG_LABEL )
+    if ( sm_wxPG_LABEL && name != wxPG_LABEL )
         DoSetName( name );
     else
         DoSetName( m_label );
@@ -2209,7 +2209,7 @@ void wxPGProperty::SetValueImage( wxBitmap& bmp )
 
         if ( imSz.y != maxSz.y )
         {
-        #if wxUSE_IMAGE
+#if wxUSE_IMAGE
             // Here we use high-quality wxImage scaling functions available
             wxImage img = bmp.ConvertToImage();
             double scaleY = (double)maxSz.y / (double)imSz.y;
@@ -2217,17 +2217,20 @@ void wxPGProperty::SetValueImage( wxBitmap& bmp )
                         wxRound(bmp.GetHeight()*scaleY),
                         wxIMAGE_QUALITY_HIGH);
             wxBitmap* bmpNew = new wxBitmap(img);
-        #else
+#else // !wxUSE_IMAGE
             // This is the old, deprecated method of scaling the image
             wxBitmap* bmpNew = new wxBitmap(maxSz.x,maxSz.y,bmp.GetDepth());
+#if defined(__WXMSW__) || defined(__WXOSX__)
+            // wxBitmap::UseAlpha() is used only on wxMSW and wxOSX.
             bmpNew->UseAlpha(bmp.HasAlpha());
+#endif // __WXMSW__ || __WXOSX__
             {
                 wxMemoryDC dc(*bmpNew);
                 double scaleY = (double)maxSz.y / (double)imSz.y;
                 dc.SetUserScale(scaleY, scaleY);
                 dc.DrawBitmap(bmp, 0, 0);
             }
-        #endif
+#endif // wxUSE_IMAGE/!wxUSE_IMAGE
 
             m_valueBitmap = bmpNew;
         }
@@ -2927,20 +2930,23 @@ wxString wxPropertyCategory::GetValueAsString( int argFlags ) const
     return wxPGProperty::GetValueAsString(argFlags);
 }
 
+static int DoGetTextExtent(const wxWindow* wnd, const wxString& label, const wxFont& font)
+{
+    int x = 0, y = 0;
+    wnd->GetTextExtent(label, &x, &y, 0, 0, &font);
+    return x;
+}
+
 int wxPropertyCategory::GetTextExtent( const wxWindow* wnd, const wxFont& font ) const
 {
     if ( m_textExtent > 0 )
         return m_textExtent;
-    int x = 0, y = 0;
-    ((wxWindow*)wnd)->GetTextExtent( m_label, &x, &y, 0, 0, &font );
-    return x;
+    return DoGetTextExtent(wnd, m_label, font);
 }
 
-void wxPropertyCategory::CalculateTextExtent( wxWindow* wnd, const wxFont& font )
+void wxPropertyCategory::CalculateTextExtent(const wxWindow* wnd, const wxFont& font)
 {
-    int x = 0, y = 0;
-    wnd->GetTextExtent( m_label, &x, &y, 0, 0, &font );
-    m_textExtent = x;
+    m_textExtent = DoGetTextExtent(wnd, m_label, font);
 }
 
 // -----------------------------------------------------------------------

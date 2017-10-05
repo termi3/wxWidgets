@@ -135,11 +135,9 @@ wxSize wxHeaderCtrl::DoGetBestSize() const
 
     // the vertical size is rather arbitrary but it looks better if we leave
     // some space around the text
-    const wxSize size(IsEmpty() ? wxHeaderCtrlBase::DoGetBestSize().x
-                                : GetColEnd(GetColumnCount() - 1),
-                                height ); // (7*GetCharHeight())/4);
-    CacheBestSize(size);
-    return size;
+    return wxSize(IsEmpty() ? wxHeaderCtrlBase::DoGetBestSize().x
+                            : GetColEnd(GetColumnCount() - 1),
+                  height); // (7*GetCharHeight())/4);
 }
 
 int wxHeaderCtrl::GetColStart(unsigned int idx) const
@@ -487,9 +485,6 @@ void wxHeaderCtrl::OnPaint(wxPaintEvent& WXUNUSED(event))
 
     wxAutoBufferedPaintDC dc(this);
 
-    dc.SetBackground(GetBackgroundColour());
-    dc.Clear();
-
     // account for the horizontal scrollbar offset in the parent window
     dc.SetDeviceOrigin(m_scrollOffset, 0);
 
@@ -535,7 +530,7 @@ void wxHeaderCtrl::OnPaint(wxPaintEvent& WXUNUSED(event))
         params.m_labelAlignment = col.GetAlignment();
 
 #ifdef __WXGTK__
-        if (i == count-1)
+        if (i == count-1 && xpos + colWidth >= w)
         {
 //            colWidth = wxMax( colWidth, vw - xpos );
             state |= wxCONTROL_DIRTY;
@@ -553,6 +548,14 @@ void wxHeaderCtrl::OnPaint(wxPaintEvent& WXUNUSED(event))
                                 );
 
         xpos += colWidth;
+    }
+    if (xpos < w)
+    {
+        int state = wxCONTROL_DIRTY;
+        if (!IsEnabled())
+            state |= wxCONTROL_DISABLED;
+        wxRendererNative::Get().DrawHeaderButton(
+            this, dc, wxRect(xpos, 0, w - xpos, h), state);
     }
 }
 

@@ -52,6 +52,8 @@ wxDEFINE_EVENT( wxEVT_LIST_ITEM_RIGHT_CLICK, wxListEvent );
 wxDEFINE_EVENT( wxEVT_LIST_ITEM_MIDDLE_CLICK, wxListEvent );
 wxDEFINE_EVENT( wxEVT_LIST_ITEM_ACTIVATED, wxListEvent );
 wxDEFINE_EVENT( wxEVT_LIST_ITEM_FOCUSED, wxListEvent );
+wxDEFINE_EVENT( wxEVT_LIST_ITEM_CHECKED, wxListEvent );
+wxDEFINE_EVENT( wxEVT_LIST_ITEM_UNCHECKED, wxListEvent );
 wxDEFINE_EVENT( wxEVT_LIST_CACHE_HINT, wxListEvent );
 
 // -----------------------------------------------------------------------------
@@ -242,10 +244,10 @@ void wxListCtrlBase::EnableAlternateRowColours(bool enable)
     }
 }
 
-wxListItemAttr *wxListCtrlBase::OnGetItemAttr(long item) const
+wxItemAttr *wxListCtrlBase::OnGetItemAttr(long item) const
 {
     return (m_alternateRowColour.GetBackgroundColour().IsOk() && (item % 2))
-        ? wxConstCast(&m_alternateRowColour, wxListItemAttr)
+        ? wxConstCast(&m_alternateRowColour, wxItemAttr)
         : NULL; // no attributes by default
 }
 

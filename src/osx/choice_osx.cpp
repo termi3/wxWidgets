@@ -131,7 +131,7 @@ int wxChoice::DoInsertItems(const wxArrayStringsAdapter & items,
         }
 
         wxString text = items[i];
-        if (text == wxEmptyString)
+        if (text.empty())
             text = " ";  // menu items can't have empty labels
         m_popUpMenu->Insert( idx, i+1, text );
         m_datas.Insert( NULL, idx );
@@ -247,7 +247,7 @@ wxSize wxChoice::DoGetBestSize() const
     // computed by the base class method to account for the arrow.
     const int lbHeight = wxWindow::DoGetBestSize().y;
 
-    return wxSize(wxChoiceBase::DoGetBestSize().x + 2*lbHeight + GetCharWidth(),
+    return wxSize(wxChoiceBase::DoGetBestSize().x + 4*GetCharWidth(),
                   lbHeight);
 }
 

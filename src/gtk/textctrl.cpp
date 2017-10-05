@@ -288,25 +288,6 @@ static void wxGtkTextApplyTagsFromAttr(GtkWidget *text,
     }
 }
 
-static void wxGtkTextInsert(GtkWidget *text,
-                            GtkTextBuffer *text_buffer,
-                            const wxTextAttr& attr,
-                            const wxCharBuffer& buffer)
-
-{
-    gint start_offset;
-    GtkTextIter iter, start;
-
-    gtk_text_buffer_get_iter_at_mark( text_buffer, &iter,
-                                     gtk_text_buffer_get_insert (text_buffer) );
-    start_offset = gtk_text_iter_get_offset (&iter);
-    gtk_text_buffer_insert( text_buffer, &iter, buffer, strlen(buffer) );
-
-    gtk_text_buffer_get_iter_at_offset (text_buffer, &start, start_offset);
-
-    wxGtkTextApplyTagsFromAttr(text, text_buffer, attr, &start, &iter);
-}
-
 // Implementation of wxTE_AUTO_URL for wxGTK2 by Mart Raudsepp,
 
 extern "C" {
@@ -480,17 +461,23 @@ wx_insert_text_callback(GtkTextBuffer* buffer,
 
 // And an "after" version used for detecting URLs in the text.
 static void
-au_insert_text_callback(GtkTextBuffer * WXUNUSED(buffer),
+au_insert_text_callback(GtkTextBuffer *buffer,
                         GtkTextIter *end,
                         gchar *text,
                         gint len,
                         wxTextCtrl *win)
 {
-    if (!len || !(win->GetWindowStyleFlag() & wxTE_AUTO_URL) )
-        return;
-
     GtkTextIter start = *end;
     gtk_text_iter_backward_chars(&start, g_utf8_strlen(text, len));
+
+    if ( !win->GetDefaultStyle().IsDefault() )
+    {
+        wxGtkTextApplyTagsFromAttr(win->GetHandle(), buffer, win->GetDefaultStyle(),
+                                   &start, end);
+    }
+
+    if ( !len || !(win->GetWindowStyleFlag() & wxTE_AUTO_URL) )
+        return;
 
     GtkTextIter line_start = start;
     GtkTextIter line_end = *end;
@@ -731,8 +718,13 @@ bool wxTextCtrl::Create( wxWindow *parent,
         // a single-line text control: no need for scrollbars
         m_widget =
         m_text = gtk_entry_new();
+
+        // Set a minimal width for preferred size to avoid GTK3 debug warnings
+        // about size allocations smaller than preferred size
+        gtk_entry_set_width_chars((GtkEntry*)m_text, 1);
+
         // work around probable bug in GTK+ 2.18 when calling WriteText on a
-        // new, empty control, see http://trac.wxwidgets.org/ticket/11409
+        // new, empty control, see https://trac.wxwidgets.org/ticket/11409
         gtk_entry_get_text((GtkEntry*)m_text);
 
         if (style & wxNO_BORDER)
@@ -799,9 +791,6 @@ bool wxTextCtrl::Create( wxWindow *parent,
                                        "underline", PANGO_UNDERLINE_SINGLE,
                                        NULL);
 
-            // Check for URLs after each text change
-            g_signal_connect_after (m_buffer, "insert_text",
-                                    G_CALLBACK (au_insert_text_callback), this);
             g_signal_connect_after (m_buffer, "delete_range",
                                     G_CALLBACK (au_delete_range_callback), this);
 
@@ -824,6 +813,10 @@ bool wxTextCtrl::Create( wxWindow *parent,
         // the IME-generated input.
         g_signal_connect(m_buffer, "insert_text",
                          G_CALLBACK(wx_insert_text_callback), this);
+
+        // Needed for wxTE_AUTO_URL and applying custom styles
+        g_signal_connect_after(m_buffer, "insert_text",
+                               G_CALLBACK(au_insert_text_callback), this);
     }
     else // single line
     {
@@ -1037,79 +1030,21 @@ bool wxTextCtrl::IsEmpty() const
     return wxTextEntry::IsEmpty();
 }
 
-void wxTextCtrl::DoSetValue( const wxString &value, int flags )
-{
-    wxCHECK_RET( m_text != NULL, wxT("invalid text ctrl") );
-
-    m_modified = false;
-
-    if ( !IsMultiLine() )
-    {
-        wxTextEntry::DoSetValue(value, flags);
-        return;
-    }
-
-    if (value.IsEmpty())
-    {
-        if ( !(flags & SetValue_SendEvent) )
-            EnableTextChangedEvents(false);
-
-        gtk_text_buffer_set_text( m_buffer, "", 0 );
-
-        if ( !(flags & SetValue_SendEvent) )
-            EnableTextChangedEvents(true);
-
-        return;
-    }
-
-#if wxUSE_UNICODE
-    const wxCharBuffer buffer(value.utf8_str());
-#else
-    wxFontEncoding enc = m_defaultStyle.HasFont()
-                            ? m_defaultStyle.GetFont().GetEncoding()
-                            : wxFONTENCODING_SYSTEM;
-    if ( enc == wxFONTENCODING_SYSTEM )
-        enc = GetTextEncoding();
-
-    const wxCharBuffer buffer(wxGTK_CONV_ENC(value, enc));
-    if ( !buffer )
-    {
-        // see comment in WriteText() as to why we must warn the user about
-        // this
-        wxLogWarning(_("Failed to set text in the text control."));
-        return;
-    }
-#endif
-
-    if ( !(flags & SetValue_SendEvent) )
-    {
-        EnableTextChangedEvents(false);
-    }
-
-    gtk_text_buffer_set_text( m_buffer, buffer, strlen(buffer) );
-
-    if ( !m_defaultStyle.IsDefault() )
-    {
-        GtkTextIter start, end;
-        gtk_text_buffer_get_bounds( m_buffer, &start, &end );
-        wxGtkTextApplyTagsFromAttr(m_widget, m_buffer, m_defaultStyle,
-                                   &start, &end);
-    }
-
-    if ( !(flags & SetValue_SendEvent) )
-    {
-        EnableTextChangedEvents(true);
-    }
-}
-
 void wxTextCtrl::WriteText( const wxString &text )
 {
     wxCHECK_RET( m_text != NULL, wxT("invalid text ctrl") );
 
+    if ( text.empty() )
+        return;
+
     // we're changing the text programmatically
     DontMarkDirtyOnNextChange();
 
-    // avoid generating wxEVT_CHAR when called from wxEVT_CHAR handler
+    // Inserting new text into the control below will emit insert-text signal
+    // which assumes that if m_imKeyEvent is set, it is called in response to
+    // this key press -- which is not the case here (but m_imKeyEvent might
+    // still be set e.g. because we're called from a menu event handler
+    // triggered by a keyboard accelerator), so reset m_imKeyEvent temporarily.
     GdkEventKey* const imKeyEvent_save = m_imKeyEvent;
     m_imKeyEvent = NULL;
     wxON_BLOCK_EXIT_SET(m_imKeyEvent, imKeyEvent_save);
@@ -1121,7 +1056,7 @@ void wxTextCtrl::WriteText( const wxString &text )
     }
 
 #if wxUSE_UNICODE
-    const wxCharBuffer buffer(text.utf8_str());
+    const wxScopedCharBuffer buffer(text.utf8_str());
 #else
     // check if we have a specific style for the current position
     wxFontEncoding enc = wxFONTENCODING_SYSTEM;
@@ -1134,7 +1069,7 @@ void wxTextCtrl::WriteText( const wxString &text )
     if ( enc == wxFONTENCODING_SYSTEM )
         enc = GetTextEncoding();
 
-    const wxCharBuffer buffer(wxGTK_CONV_ENC(text, enc));
+    const wxScopedCharBuffer buffer(wxGTK_CONV_ENC(text, enc));
     if ( !buffer )
     {
         // we must log an error here as losing the text like this can be a
@@ -1149,7 +1084,11 @@ void wxTextCtrl::WriteText( const wxString &text )
     gtk_text_buffer_delete_selection(m_buffer, false, true);
 
     // Insert the text
-    wxGtkTextInsert( m_text, m_buffer, m_defaultStyle, buffer );
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_mark( m_buffer, &iter,
+                                      gtk_text_buffer_get_insert (m_buffer) );
+
+    gtk_text_buffer_insert( m_buffer, &iter, buffer, buffer.length() );
 
     // Scroll to cursor, but only if scrollbar thumb is at the very bottom
     // won't work when frozen, text view is not using m_buffer then
@@ -1216,7 +1155,7 @@ bool wxTextCtrl::PositionToXY(long pos, long *x, long *y ) const
     }
     else // single line control
     {
-        if (pos <= gtk_entry_get_text_length(GTK_ENTRY(m_text)))
+        if (pos <= GTKGetEntryTextLength(GTK_ENTRY(m_text)))
         {
             if ( y )
                 *y = 0;
@@ -1236,7 +1175,13 @@ bool wxTextCtrl::PositionToXY(long pos, long *x, long *y ) const
 long wxTextCtrl::XYToPosition(long x, long y ) const
 {
     if ( IsSingleLine() )
-        return 0;
+    {
+
+        if ( y != 0 || x >= GTKGetEntryTextLength(GTK_ENTRY(m_text)) )
+            return -1;
+
+        return x;
+    }
 
     GtkTextIter iter;
     if (y >= gtk_text_buffer_get_line_count (m_buffer))
@@ -1450,6 +1395,11 @@ void wxTextCtrl::ShowPosition( long pos )
             m_showPositionOnThaw = mark;
         else
             gtk_text_view_scroll_mark_onscreen(GTK_TEXT_VIEW(m_text), mark);
+    }
+    else // single line
+    {   // This function not only shows character at required position
+        // but also places the cursor at this position.
+        gtk_editable_set_position(GTK_EDITABLE(m_text), pos);
     }
 }
 
@@ -1806,6 +1756,11 @@ bool wxTextCtrl::GetStyle(long position, wxTextAttr& style)
         if ( font.SetNativeFontInfo(wxString(pangoFontString)) )
             style.SetFont(font);
 
+        if ( pattr->appearance.underline != PANGO_UNDERLINE_NONE )
+            style.SetFontUnderlined(true);
+        if ( pattr->appearance.strikethrough )
+            style.SetFontStrikethrough(true);
+
         // TODO: set alignment, tabs and indents
     }
 
@@ -1828,22 +1783,24 @@ void wxTextCtrl::DoApplyWidgetStyle(GtkRcStyle *style)
     const bool bg_ok = m_backgroundColour.IsOk();
     if (fg_ok || bg_ok)
     {
-        GdkRGBA fg_orig, bg_orig;
+        GdkRGBA *fg_orig, *bg_orig;
         GtkStyleContext* context = gtk_widget_get_style_context(m_text);
+        gtk_style_context_save(context);
         if (IsMultiLine())
-        {
-            gtk_style_context_save(context);
             gtk_style_context_add_class(context, GTK_STYLE_CLASS_VIEW);
-        }
-        gtk_style_context_get_color(context, selectedFocused, &fg_orig);
-        gtk_style_context_get_background_color(context, selectedFocused, &bg_orig);
-        if (IsMultiLine())
-            gtk_style_context_restore(context);
+        gtk_style_context_set_state(context, selectedFocused);
+        gtk_style_context_get(context, selectedFocused,
+            "color", &fg_orig, "background-color", &bg_orig,
+            NULL);
+        gtk_style_context_restore(context);
 
         if (fg_ok)
-            gtk_widget_override_color(m_text, selectedFocused, &fg_orig);
+            gtk_widget_override_color(m_text, selectedFocused, fg_orig);
         if (bg_ok)
-            gtk_widget_override_background_color(m_text, selectedFocused, &bg_orig);
+            gtk_widget_override_background_color(m_text, selectedFocused, bg_orig);
+
+        gdk_rgba_free(fg_orig);
+        gdk_rgba_free(bg_orig);
     }
 #endif // __WXGTK3__
 

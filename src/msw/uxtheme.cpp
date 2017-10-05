@@ -43,8 +43,8 @@
 class wxUxThemeModule : public wxModule
 {
 public:
-    virtual bool OnInit() { return true; }
-    virtual void OnExit()
+    virtual bool OnInit() wxOVERRIDE { return true; }
+    virtual void OnExit() wxOVERRIDE
     {
         if ( wxUxThemeEngine::ms_themeEngine )
         {
@@ -126,6 +126,7 @@ bool wxUxThemeEngine::Initialize()
     RESOLVE_UXTHEME_FUNCTION(PFNWXUOPENTHEMEDATA, OpenThemeData);
     RESOLVE_UXTHEME_FUNCTION(PFNWXUCLOSETHEMEDATA, CloseThemeData);
     RESOLVE_UXTHEME_FUNCTION(PFNWXUDRAWTHEMEBACKGROUND, DrawThemeBackground);
+    RESOLVE_UXTHEME_FUNCTION(PFNWXUDRAWTHEMEBACKGROUNDEX, DrawThemeBackgroundEx);
     RESOLVE_UXTHEME_FUNCTION(PFNWXUDRAWTHEMETEXT, DrawThemeText);
     // This function is not available under XP, so don't fail if it can't be
     // resolved, we'll check before using it.

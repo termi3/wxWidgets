@@ -29,6 +29,8 @@
 #include "wx/systhemectrl.h"
 
 class WXDLLIMPEXP_FWD_CORE wxImageList;
+class wxItemAttr;
+class WXDLLIMPEXP_FWD_CORE wxHeaderCtrl;
 
 #if !(defined(__WXGTK20__) || defined(__WXOSX__) ) || defined(__WXUNIVERSAL__)
 // #if !(defined(__WXOSX__)) || defined(__WXUNIVERSAL__)
@@ -52,6 +54,9 @@ class WXDLLIMPEXP_FWD_ADV wxDataViewCtrl;
 class WXDLLIMPEXP_FWD_ADV wxDataViewColumn;
 class WXDLLIMPEXP_FWD_ADV wxDataViewRenderer;
 class WXDLLIMPEXP_FWD_ADV wxDataViewModelNotifier;
+#if wxUSE_ACCESSIBILITY
+class WXDLLIMPEXP_FWD_ADV wxDataViewCtrlAccessible;
+#endif // wxUSE_ACCESSIBILITY
 
 extern WXDLLIMPEXP_DATA_ADV(const char) wxDataViewCtrlNameStr[];
 
@@ -85,7 +90,7 @@ class wxDataViewItem : public wxItemId<void*>
 {
 public:
     wxDataViewItem() : wxItemId<void*>() { }
-    wxEXPLICIT wxDataViewItem(void* pItem) : wxItemId<void*>(pItem) { }
+    explicit wxDataViewItem(void* pItem) : wxItemId<void*>(pItem) { }
 };
 
 WX_DEFINE_ARRAY(wxDataViewItem, wxDataViewItemArray);
@@ -128,7 +133,7 @@ private:
 // wxDataViewItemAttr: a structure containing the visual attributes of an item
 // ----------------------------------------------------------------------------
 
-// TODO: this should be renamed to wxItemAttr or something general like this
+// TODO: Merge with wxItemAttr somehow.
 
 class WXDLLIMPEXP_ADV wxDataViewItemAttr
 {
@@ -380,7 +385,7 @@ public:
     // implement base methods
     virtual unsigned int GetChildren( const wxDataViewItem &item, wxDataViewItemArray &children ) const wxOVERRIDE;
 
-    unsigned int GetCount() const wxOVERRIDE { return m_hash.GetCount(); }
+    unsigned int GetCount() const wxOVERRIDE { return (unsigned int)m_hash.GetCount(); }
 
 private:
     wxDataViewItemArray m_hash;
@@ -662,6 +667,9 @@ public:
         return !allow;
     }
 
+    // Return true if multi column sort is currently allowed.
+    virtual bool IsMultiColumnSortAllowed() const { return false; }
+
     // This should also be overridden to actually use the specified column for
     // sorting if using multiple columns is supported.
     virtual void ToggleSortByColumn(int WXUNUSED(column)) { }
@@ -702,8 +710,8 @@ public:
     virtual void SelectAll() = 0;
     virtual void UnselectAll() = 0;
 
-    virtual void Expand( const wxDataViewItem & item ) = 0;
-    virtual void ExpandAncestors( const wxDataViewItem & item );
+    void Expand( const wxDataViewItem & item );
+    void ExpandAncestors( const wxDataViewItem & item );
     virtual void Collapse( const wxDataViewItem & item ) = 0;
     virtual bool IsExpanded( const wxDataViewItem & item ) const = 0;
 
@@ -729,6 +737,10 @@ public:
     // define control visual attributes
     // --------------------------------
 
+    // Header attributes: only implemented in the generic version currently.
+    virtual bool SetHeaderAttr(const wxItemAttr& WXUNUSED(attr))
+        { return false; }
+
     virtual wxVisualAttributes GetDefaultAttributes() const wxOVERRIDE
     {
         return GetClassDefaultAttributes(GetWindowVariant());
@@ -743,6 +755,10 @@ public:
 protected:
     virtual void DoSetExpanderColumn() = 0 ;
     virtual void DoSetIndent() = 0;
+
+    // Just expand this item assuming it is already shown, i.e. its parent has
+    // been already expanded using ExpandAncestors().
+    virtual void DoExpand(const wxDataViewItem & item) = 0;
 
 private:
     // Implementation of the public Set/GetCurrentItem() methods which are only
@@ -766,25 +782,32 @@ protected:
 class WXDLLIMPEXP_ADV wxDataViewEvent : public wxNotifyEvent
 {
 public:
-    wxDataViewEvent(wxEventType commandType = wxEVT_NULL, int winid = 0)
-        : wxNotifyEvent(commandType, winid),
-        m_item(0),
-        m_col(-1),
-        m_model(NULL),
-        m_value(wxNullVariant),
-        m_column(NULL),
-        m_pos(-1,-1),
-        m_cacheFrom(0),
-        m_cacheTo(0),
-        m_editCancelled(false)
-#if wxUSE_DRAG_AND_DROP
-        , m_dataObject(NULL),
-        m_dataBuffer(NULL),
-        m_dataSize(0),
-        m_dragFlags(0),
-        m_dropEffect(wxDragNone)
-#endif
-        { }
+    // Default ctor, normally shouldn't be used and mostly exists only for
+    // backwards compatibility.
+    wxDataViewEvent()
+        : wxNotifyEvent()
+    {
+        Init(NULL, NULL, wxDataViewItem());
+    }
+
+    // Constructor for the events affecting columns (and possibly also items).
+    wxDataViewEvent(wxEventType evtType,
+                    wxDataViewCtrlBase* dvc,
+                    wxDataViewColumn* column,
+                    const wxDataViewItem& item = wxDataViewItem())
+        : wxNotifyEvent(evtType, dvc->GetId())
+    {
+        Init(dvc, column, item);
+    }
+
+    // Constructor for the events affecting only the items.
+    wxDataViewEvent(wxEventType evtType,
+                    wxDataViewCtrlBase* dvc,
+                    const wxDataViewItem& item)
+        : wxNotifyEvent(evtType, dvc->GetId())
+    {
+        Init(dvc, NULL, item);
+    }
 
     wxDataViewEvent(const wxDataViewEvent& event)
         : wxNotifyEvent(event),
@@ -808,13 +831,8 @@ public:
         { }
 
     wxDataViewItem GetItem() const { return m_item; }
-    void SetItem( const wxDataViewItem &item ) { m_item = item; }
-
     int GetColumn() const { return m_col; }
-    void SetColumn( int col ) { m_col = col; }
-
     wxDataViewModel* GetModel() const { return m_model; }
-    void SetModel( wxDataViewModel *model ) { m_model = model; }
 
     const wxVariant &GetValue() const { return m_value; }
     void SetValue( const wxVariant &value ) { m_value = value; }
@@ -824,7 +842,6 @@ public:
     void SetEditCanceled(bool editCancelled) { m_editCancelled = editCancelled; }
 
     // for wxEVT_DATAVIEW_COLUMN_HEADER_CLICKED only
-    void SetDataViewColumn( wxDataViewColumn *col ) { m_column = col; }
     wxDataViewColumn *GetDataViewColumn() const { return m_column; }
 
     // for wxEVT_DATAVIEW_CONTEXT_MENU only
@@ -857,6 +874,20 @@ public:
 
     virtual wxEvent *Clone() const wxOVERRIDE { return new wxDataViewEvent(*this); }
 
+    // These methods shouldn't be used outside of wxWidgets and wxWidgets
+    // itself doesn't use them any longer neither as it constructs the events
+    // with the appropriate ctors directly.
+#if WXWIN_COMPATIBILITY_3_0
+    wxDEPRECATED_MSG("Pass the argument to the ctor instead")
+    void SetModel( wxDataViewModel *model ) { m_model = model; }
+    wxDEPRECATED_MSG("Pass the argument to the ctor instead")
+    void SetDataViewColumn( wxDataViewColumn *col ) { m_column = col; }
+    wxDEPRECATED_MSG("Pass the argument to the ctor instead")
+    void SetColumn( int col ) { m_col = col; }
+    wxDEPRECATED_MSG("Pass the argument to the ctor instead")
+    void SetItem( const wxDataViewItem &item ) { m_item = item; }
+#endif // WXWIN_COMPATIBILITY_3_0
+
 protected:
     wxDataViewItem      m_item;
     int                 m_col;
@@ -880,6 +911,11 @@ protected:
 #endif // wxUSE_DRAG_AND_DROP
 
 private:
+    // Common part of non-copy ctors.
+    void Init(wxDataViewCtrlBase* dvc,
+              wxDataViewColumn* column,
+              const wxDataViewItem& item);
+
     wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxDataViewEvent);
 };
 

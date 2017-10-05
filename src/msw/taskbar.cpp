@@ -30,27 +30,12 @@
 
 #include <string.h>
 #include "wx/taskbar.h"
+#include "wx/platinfo.h"
 #include "wx/msw/private.h"
 
 #ifndef NIN_BALLOONTIMEOUT
     #define NIN_BALLOONTIMEOUT      0x0404
     #define NIN_BALLOONUSERCLICK    0x0405
-#endif
-
-#ifndef NIM_SETVERSION
-    #define NIM_SETVERSION  0x00000004
-#endif
-
-#ifndef NIF_INFO
-    #define NIF_INFO        0x00000010
-#endif
-
-#ifndef NOTIFYICONDATA_V2_SIZE
-    #ifdef UNICODE
-        #define NOTIFYICONDATA_V2_SIZE 0x03A8
-    #else
-        #define NOTIFYICONDATA_V2_SIZE 0x01E8
-    #endif
 #endif
 
 // initialized on demand
@@ -82,7 +67,7 @@ public:
     }
 
     WXLRESULT MSWWindowProc(WXUINT msg,
-                            WXWPARAM wParam, WXLPARAM lParam)
+                            WXWPARAM wParam, WXLPARAM lParam) wxOVERRIDE
     {
         if (msg == gs_msgRestartTaskbar || msg == gs_msgTaskbar)
         {
@@ -109,13 +94,12 @@ struct NotifyIconData : public NOTIFYICONDATA
     {
         memset(this, 0, sizeof(NOTIFYICONDATA));
 
-        // Do _not_ use sizeof(NOTIFYICONDATA) here, it may be too big if we're
-        // compiled with newer headers but running on an older system and while
-        // we could do complicated tests for the exact system version it's
-        // easier to just use an old size which should be supported everywhere
-        // from Windows 2000 up and which is all we need as we don't use any
-        // newer features so far.
-        cbSize = NOTIFYICONDATA_V2_SIZE;
+        // Since Vista there is a new member hBalloonIcon which will be used
+        // if a user specified icon is specified in ShowBalloon(). For XP 
+        // use the old size
+        cbSize = wxPlatformInfo::Get().CheckOSVersion(6, 0)
+                    ? sizeof(NOTIFYICONDATA)
+                    : NOTIFYICONDATA_V2_SIZE;
 
         hWnd = (HWND) hwnd;
         uCallbackMessage = gs_msgTaskbar;
@@ -203,7 +187,8 @@ bool
 wxTaskBarIcon::ShowBalloon(const wxString& title,
                            const wxString& text,
                            unsigned msec,
-                           int flags)
+                           int flags,
+                           const wxIcon& icon)
 {
     wxCHECK_MSG( m_iconAdded, false,
                     wxT("can't be used before the icon is created") );
@@ -229,6 +214,17 @@ wxTaskBarIcon::ShowBalloon(const wxString& title,
     wxStrlcpy(notifyData.szInfoTitle, title.t_str(),
                 WXSIZEOF(notifyData.szInfoTitle));
 
+    wxUnusedVar(icon); // It's only unused if not supported actually.
+
+#ifdef NIIF_LARGE_ICON
+    // User specified icon is only supported since Vista
+    if ( icon.IsOk() && wxPlatformInfo::Get().CheckOSVersion(6, 0) )
+    {
+        notifyData.hBalloonIcon = GetHiconOf(icon);
+        notifyData.dwInfoFlags |= NIIF_USER | NIIF_LARGE_ICON;
+    }
+    else
+#endif
     if ( flags & wxICON_INFORMATION )
         notifyData.dwInfoFlags |= NIIF_INFO;
     else if ( flags & wxICON_WARNING )

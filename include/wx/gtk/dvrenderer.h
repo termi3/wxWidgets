@@ -53,12 +53,18 @@ public:
 
     GtkCellRenderer* GetGtkHandle() { return m_renderer; }
     void GtkInitHandlers();
-    void GtkUpdateAlignment() { GtkApplyAlignment(m_renderer); }
+    virtual void GtkUpdateAlignment() { GtkApplyAlignment(m_renderer); }
 
     // return the text renderer used by this renderer for setting text cell
     // specific attributes: can return NULL if this renderer doesn't render any
     // text
     virtual GtkCellRendererText *GtkGetTextRenderer() const { return NULL; }
+
+    // return the widget actually used by the renderer for editing, this may be
+    // different from the editor control widget for the custom renderers
+    virtual GtkWidget* GtkGetEditorWidget() const;
+
+    void GtkSetCurrentItem(const wxDataViewItem& item) { m_itemBeingRendered = item; }
 
 private:
     // Change the mode at GTK level without touching m_mode, this is useful for
@@ -69,6 +75,8 @@ private:
 protected:
     virtual void SetAttr(const wxDataViewItemAttr& attr) wxOVERRIDE;
     virtual void SetEnabled(bool enabled) wxOVERRIDE;
+
+    virtual bool IsHighlighted() const wxOVERRIDE;
 
     virtual void GtkOnCellChanged(const wxVariant& value,
                                   const wxDataViewItem& item,
@@ -88,6 +96,9 @@ protected:
     // true if we hadn't changed any visual attributes or restored them since
     // doing this
     bool m_usingDefaultAttrs;
+
+    // the item currently being rendered
+    wxDataViewItem m_itemBeingRendered;
 
 protected:
     wxDECLARE_DYNAMIC_CLASS_NO_COPY(wxDataViewRenderer);

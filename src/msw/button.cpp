@@ -82,17 +82,21 @@ bool wxButton::Create(wxWindow *parent,
                       const wxValidator& validator,
                       const wxString& name)
 {
-    wxString label(lbl);
-    if (label.empty() && wxIsStockID(id))
+    wxString label;
+    if ( !(style & wxBU_NOTEXT) )
     {
-        // On Windows, some buttons aren't supposed to have mnemonics
-        label = wxGetStockLabel
-                (
-                    id,
-                    id == wxID_OK || id == wxID_CANCEL || id == wxID_CLOSE
-                        ? wxSTOCK_NOFLAGS
-                        : wxSTOCK_WITH_MNEMONIC
-                );
+        label = lbl;
+        if (label.empty() && wxIsStockID(id))
+        {
+            // On Windows, some buttons aren't supposed to have mnemonics
+            label = wxGetStockLabel
+                    (
+                        id,
+                        id == wxID_OK || id == wxID_CANCEL || id == wxID_CLOSE
+                            ? wxSTOCK_NOFLAGS
+                            : wxSTOCK_WITH_MNEMONIC
+                    );
+        }
     }
 
     if ( !CreateControl(parent, id, pos, size, style, validator, name) )
@@ -280,13 +284,19 @@ void wxButton::SetTmpDefault()
         return;
 
     wxWindow *winOldDefault = tlw->GetDefaultItem();
+
     tlw->SetTmpDefaultItem(this);
 
     // Notice that the order of these statements is important, the old button
     // is not reset if we do it the other way round, probably because of
     // something done by the default DM_SETDEFID handler.
     SetDefaultStyle(this, true);
-    SetDefaultStyle(wxDynamicCast(winOldDefault, wxButton), false);
+    if ( winOldDefault != this )
+    {
+        // But we mustn't reset the default style on this button itself if it
+        // had already been the default.
+        SetDefaultStyle(wxDynamicCast(winOldDefault, wxButton), false);
+    }
 }
 
 // unset this button as currently default, it may still stay permanent default
@@ -302,7 +312,10 @@ void wxButton::UnsetTmpDefault()
 
     // Just as in SetTmpDefault() above, the order is important here.
     SetDefaultStyle(wxDynamicCast(winOldDefault, wxButton), true);
-    SetDefaultStyle(this, false);
+    if ( winOldDefault != this )
+    {
+        SetDefaultStyle(this, false);
+    }
 }
 
 /* static */
@@ -400,12 +413,8 @@ bool wxButton::MSWCommand(WXUINT param, WXWORD WXUNUSED(id))
     bool processed = false;
     switch ( param )
     {
-        // NOTE: Apparently older versions (NT 4?) of the common controls send
-        //       BN_DOUBLECLICKED but not a second BN_CLICKED for owner-drawn
-        //       buttons, so in order to send two EVT_BUTTON events we should
-        //       catch both types.  Currently (Feb 2003) up-to-date versions of
-        //       win98, win2k and winXP all send two BN_CLICKED messages for
-        //       all button types, so we don't catch BN_DOUBLECLICKED anymore
+        // NOTE: Currently all versions of Windows send two BN_CLICKED messages
+        //       for all button types, so we don't catch BN_DOUBLECLICKED
         //       in order to not get 3 EVT_BUTTON events.  If this is a problem
         //       then we need to figure out which version of the comctl32 changed
         //       this behaviour and test for it.

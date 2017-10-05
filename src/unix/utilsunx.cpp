@@ -20,7 +20,11 @@
 
 #include "wx/utils.h"
 
-#define USE_PUTENV (!defined(HAVE_SETENV) && defined(HAVE_PUTENV))
+#if !defined(HAVE_SETENV) && defined(HAVE_PUTENV)
+    #define USE_PUTENV 1
+#else
+    #define USE_PUTENV 0
+#endif
 
 #ifndef WX_PRECOMP
     #include "wx/string.h"
@@ -243,6 +247,10 @@ int wxKill(long pid, wxSignal sig, wxKillError *rc, int flags)
 // Shutdown or reboot the PC
 bool wxShutdown(int flags)
 {
+#if defined(__WXOSX__) && wxOSX_USE_IPHONE
+    wxUnusedVar(flags);
+    return false;
+#else
     flags &= ~wxSHUTDOWN_FORCE;
 
     wxChar level;
@@ -266,6 +274,7 @@ bool wxShutdown(int flags)
     }
 
     return system(wxString::Format("init %c", level).mb_str()) == 0;
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -400,12 +409,12 @@ public:
 
         for ( int i = 0; i < m_argc; i++ )
         {
-            m_argv[i] = wxStrdup(args[i]);
+            m_argv[i] = wxStrdup(args[i].mb_str(wxConvWhateverWorks));
         }
     }
 
 #if wxUSE_UNICODE
-    ArgsArray(wchar_t **wargv)
+    ArgsArray(const wchar_t* const* wargv)
     {
         int argc = 0;
         while ( wargv[argc] )
@@ -430,7 +439,7 @@ public:
         delete [] m_argv;
     }
 
-    operator char**() const { return m_argv; }
+    operator const char* const*() const { return m_argv; }
 
 private:
     void Init(int argc)
@@ -453,7 +462,7 @@ private:
 // ----------------------------------------------------------------------------
 
 #if defined(__DARWIN__) && !defined(__WXOSX_IPHONE__)
-bool wxMacLaunch(char **argv);
+bool wxMacLaunch(const char* const* argv);
 #endif
 
 long wxExecute(const wxString& command, int flags, wxProcess *process,
@@ -467,7 +476,7 @@ long wxExecute(const wxString& command, int flags, wxProcess *process,
 
 #if wxUSE_UNICODE
 
-long wxExecute(wchar_t **wargv, int flags, wxProcess *process,
+long wxExecute(const wchar_t* const* wargv, int flags, wxProcess* process,
         const wxExecuteEnv *env)
 {
     ArgsArray argv(wargv);
@@ -555,7 +564,7 @@ int BlockUntilChildExit(wxExecuteData& execData)
 } // anonymous namespace
 
 // wxExecute: the real worker function
-long wxExecute(char **argv, int flags, wxProcess *process,
+long wxExecute(const char* const* argv, int flags, wxProcess* process,
         const wxExecuteEnv *env)
 {
     // for the sync execution, we return -1 to indicate failure, but for async
@@ -692,7 +701,7 @@ long wxExecute(char **argv, int flags, wxProcess *process,
         //       have more opened descriptions than this number). Unfortunately
         //       there is no good portable solution for closing all descriptors
         //       above a certain threshold but non-portable solutions exist for
-        //       most platforms, see [http://stackoverflow.com/questions/899038/
+        //       most platforms, see [https://stackoverflow.com/questions/899038/
         //          getting-the-highest-allocated-file-descriptor]
         for ( int fd = 0; fd < (int)FD_SETSIZE; ++fd )
         {
@@ -739,10 +748,10 @@ long wxExecute(char **argv, int flags, wxProcess *process,
             }
         }
 
-        execvp(*argv, argv);
+        execvp(*argv, const_cast<char**>(argv));
 
         fprintf(stderr, "execvp(");
-        for ( char **a = argv; *a; a++ )
+        for (const char* const* a = argv; *a; a++)
             fprintf(stderr, "%s%s", a == argv ? "" : ", ", *a);
         fprintf(stderr, ") failed with error %d!\n", errno);
 
@@ -1114,23 +1123,30 @@ wxLinuxDistributionInfo wxGetLinuxDistributionInfo()
 // these functions are in src/osx/utilsexc_base.cpp for wxMac
 #ifndef __DARWIN__
 
-wxOperatingSystemId wxGetOsVersion(int *verMaj, int *verMin)
+wxOperatingSystemId wxGetOsVersion(int *verMaj, int *verMin, int *verMicro)
 {
     // get OS version
-    int major, minor;
+    int major = -1, minor = -1, micro = -1;
     wxString release = wxGetCommandOutput(wxT("uname -r"));
-    if ( release.empty() ||
-         wxSscanf(release.c_str(), wxT("%d.%d"), &major, &minor) != 2 )
+    if ( !release.empty() )
     {
-        // failed to get version string or unrecognized format
-        major =
-        minor = -1;
+        if ( wxSscanf(release.c_str(), wxT("%d.%d.%d"), &major, &minor, &micro ) != 3 )
+        {
+            micro = 0;
+            if ( wxSscanf(release.c_str(), wxT("%d.%d"), &major, &minor ) != 2 )
+            {
+                // failed to get version string or unrecognized format
+                major = minor = micro = -1;
+            }
+        }
     }
 
     if ( verMaj )
         *verMaj = major;
     if ( verMin )
         *verMin = minor;
+    if ( verMicro )
+        *verMicro = micro;
 
     // try to understand which OS are we running
     wxString kernel = wxGetCommandOutput(wxT("uname -s"));
@@ -1148,12 +1164,14 @@ wxString wxGetOsDescription()
     return wxGetCommandOutput(wxT("uname -s -r -m"));
 }
 
-bool wxCheckOsVersion(int majorVsn, int minorVsn)
+bool wxCheckOsVersion(int majorVsn, int minorVsn, int microVsn)
 {
-    int majorCur, minorCur;
-    wxGetOsVersion(&majorCur, &minorCur);
+    int majorCur, minorCur, microCur;
+    wxGetOsVersion(&majorCur, &minorCur, &microCur);
 
-    return majorCur > majorVsn || (majorCur == majorVsn && minorCur >= minorVsn);
+    return majorCur > majorVsn
+        || (majorCur == majorVsn && minorCur >= minorVsn)
+        || (majorCur == majorVsn && minorCur == minorVsn && microCur >= microVsn);
 }
 
 #endif // !__DARWIN__
@@ -1196,7 +1214,12 @@ wxMemorySize wxGetFreeMemory()
                     {
                         unsigned long cached;
                         if ( sscanf(buf, "Cached: %lu", &cached) == 1 )
-                            memFree += cached;
+                        {
+                            if ( cached > ULONG_MAX-memFree )
+                                memFree = ULONG_MAX;
+                            else
+                                memFree += cached;
+                        }
                     }
 
                     // values here are always expressed in kB and we want bytes

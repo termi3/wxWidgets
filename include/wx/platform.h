@@ -38,7 +38,23 @@
 #    ifndef MAC_OS_X_VERSION_10_10
 #       define MAC_OS_X_VERSION_10_10 101000
 #    endif
-#    include "wx/osx/config_xcode.h"
+#    ifndef MAC_OS_X_VERSION_10_11
+#       define MAC_OS_X_VERSION_10_11 101100
+#    endif
+#    ifndef MAC_OS_X_VERSION_10_12
+#       define MAC_OS_X_VERSION_10_12 101200
+#    endif
+#    ifndef MAC_OS_X_VERSION_10_13
+#       define MAC_OS_X_VERSION_10_13 101300
+#    endif
+#    if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
+#        ifndef NSAppKitVersionNumber10_10
+#            define NSAppKitVersionNumber10_10 1343
+#        endif
+#        ifndef NSAppKitVersionNumber10_11
+#            define NSAppKitVersionNumber10_11 1404
+#        endif
+#    endif
 #    ifndef __WXOSX__
 #        define __WXOSX__ 1
 #    endif
@@ -67,10 +83,6 @@
     /* Select wxMSW under Windows if no other port is specified. */
 #   if !defined(__WXMSW__) && !defined(__WXMOTIF__) && !defined(__WXGTK__) && !defined(__WXX11__)
 #       define __WXMSW__
-#   endif
-
-#   if !defined(__WINDOWS__)
-#       define __WINDOWS__
 #   endif
 
 #   ifndef _WIN32
@@ -290,10 +302,6 @@
 #        ifndef __DARWIN__
 #            define __DARWIN__ 1
 #        endif
-        /*  NOTE: TARGET_CARBON is actually a 0/1 and must be 1 for OS X */
-#        ifndef TARGET_CARBON
-#            define TARGET_CARBON 1
-#        endif
         /* OS X uses unsigned long size_t for both ILP32 and LP64 modes. */
 #        if !defined(wxSIZE_T_IS_UINT) && !defined(wxSIZE_T_IS_ULONG)
 #            define wxSIZE_T_IS_ULONG
@@ -362,6 +370,7 @@
 #    define wxCHECK_W32API_VERSION(maj, min) (0)
 #    undef wxCHECK_MINGW32_VERSION
 #    define wxCHECK_MINGW32_VERSION( major, minor ) (0)
+#    define wxDECL_FOR_MINGW32_ALWAYS(rettype, func, params)
 #    define wxDECL_FOR_STRICT_MINGW32(rettype, func, params)
 #endif
 
@@ -415,10 +424,10 @@
     whatever reason.
 
     The primary symbol remains __WXOSX_XXX__ one, __WXOSX__ exists to allow
-    checking for any OS X port (Carbon and Cocoa) and __WXMAC__ is an old name
+    checking for any OS X port (Cocoa) and __WXMAC__ is an old name
     for it.
  */
-#if defined(__WXOSX_CARBON__) || defined(__WXOSX_COCOA__) || defined(__WXOSX_IPHONE__)
+#if defined(__WXOSX_COCOA__) || defined(__WXOSX_IPHONE__)
 #   ifndef __WXOSX__
 #       define __WXOSX__ 1
 #   endif
@@ -435,8 +444,8 @@
 #           error "incorrect SDK for an iPhone build"
 #       endif
 #   else
-#       if wxUSE_GUI && !(defined(__WXOSX_CARBON__) || defined(__WXOSX_COCOA__))
-#           error "one of __WXOSX_IPHONE__, __WXOSX_CARBON__ or __WXOSX_COCOA__ must be defined for the GUI build"
+#       if wxUSE_GUI && !defined(__WXOSX_COCOA__)
+#           error "one of __WXOSX_IPHONE__ or __WXOSX_COCOA__ must be defined for the GUI build"
 #       endif
 #       if !( defined(TARGET_OS_MAC) && TARGET_OS_MAC )
 #           error "incorrect SDK for a Mac OS X build"
@@ -468,6 +477,23 @@
 #        endif
 #        ifndef MAC_OS_X_VERSION_10_10
 #           define MAC_OS_X_VERSION_10_10 101000
+#        endif
+#        ifndef MAC_OS_X_VERSION_10_11
+#           define MAC_OS_X_VERSION_10_11 101100
+#        endif
+#        ifndef MAC_OS_X_VERSION_10_12
+#           define MAC_OS_X_VERSION_10_12 101200
+#        endif
+#        ifndef MAC_OS_X_VERSION_10_13
+#           define MAC_OS_X_VERSION_10_13 101300
+#        endif
+#        if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
+#            ifndef NSAppKitVersionNumber10_10
+#                define NSAppKitVersionNumber10_10 1343
+#            endif
+#            ifndef NSAppKitVersionNumber10_11
+#                define NSAppKitVersionNumber10_11 1404
+#            endif
 #        endif
 #    else
 #        error "only mach-o configurations are supported"

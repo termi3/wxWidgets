@@ -43,54 +43,24 @@ on systems even with a much earlier version of GTK+. You will have to ensure
 that the application is launched with lazy symbol binding for that.
 
 In order to configure wxWidgets to compile wxGTK you will need use the
-@c --with-gtk argument to the @c configure script. This is the default for many
+@c \--with-gtk argument to the @c configure script. This is the default for many
 systems.
 
 GTK+ 1.2 can still be used, albeit discouraged. For that you can pass
-@c --with-gtk=1 to the @c configure script.
+@c \--with-gtk=1 to the @c configure script.
 
 Support for GTK+ 3 is available starting with wxWidgets 2.9.4, use @c configure
-option @c --with-gtk=3 to enable it.
+option @c \--with-gtk=3 to enable it.
 
 For further information, please see the files in @c docs/gtk in the
 distribution.
 
 
 
-@section page_port_wxosx wxOSX
+@section page_port_wxosx wxOSX/Cocoa
 
-@subsection page_port_wxosx_cocoa wxOSX/Cocoa
-
-wxOSX/Cocoa is the currently recommended port of wxWidgets for the Macintosh OS
-platform. It requires OS X 10.7 or later and, unlike wxOSX/Carbon, fully
-supports 64 bit builds.
-
-This is the default port when building wxOSX, but in order to select it
-explicitly you can use
-
-@verbatim configure --with-osx_cocoa @endverbatim
-
-For further information, please see the files in @c docs/osx in the
-distribution.
-
-
-@subsection page_port_wxosx_carbon wxOSX/Carbon
-
-wxOSX/Carbon is an older port of wxWidgets for the Macintosh OS platform. Currently
-OS X 10.5 or higher are supported. wxOSX/Carbon can be compiled both using
-Apple's command line developer tools as well as Apple's Xcode IDE. wxOSX/Carbon
-supports Intel and PowerPC architectures and can be used to produce
-"universal binaries" in order create application which can run both
-architecture. Unfortunately, wxOSX/Carbon does not support any 64-bit
-architecture since Apple decided not to port its Carbon API entirely to 64-bit.
-
-@note Carbon has been deprecated by Apple as of OS X 10.5 and will likely be
-removed entirely in a future OS version. It's recommended you look into
-switching your app over to wxOSX/Cocoa as soon as possible.
-
-To build wxWidgets using wxOSX/Carbon you need to do
-
-@verbatim configure --with-osx_carbon @endverbatim
+wxOSX/Cocoa is the port of wxWidgets for the OS X platform. It requires
+OS X 10.7 or later and fully supports 64 bit builds.
 
 For further information, please see the files in @c docs/osx in the
 distribution.
@@ -193,6 +163,20 @@ create a window with no border (for example, notebook pages). So wxPanel
 overrides GetDefaultBorder() in order to call the generic
 wxWindowBase::GetDefaultBorder(), returning wxBORDER_NONE.
 
+@section page_port_wxQt wxQt
+
+wxQt is a port of wxWidgets using Qt libraries. It requires Qt 5 or later.
+
+For further information, please see the files in docs/qt in the distribution.
+
+@section page_port_wxiOS wxiOS
+
+wxiOS is a port of wxWidgets using Cocoa touch libraries for iOS. It is very
+basic in it current form, but is included for further improvements and very
+simple applications. It requires iOS 9 or later and fully supports 64 bit builds.
+
+For further information, please see the files in docs/ios in the distribution.
+
 @section page_port_nativedocs Native Toolkit Documentation
 
 It's sometimes useful to interface directly with the underlying toolkit
@@ -201,13 +185,12 @@ In such case (or when you want to e.g. write a port-specific patch) it can be
 necessary to use the underlying toolkit API directly:
 
 - wxMSW port uses win32 API: see MSDN docs at http://msdn2.microsoft.com/en-us/library/ms649779.aspx
-- wxGTK port uses GTK+ and other lower-level libraries; see 
+- wxGTK port uses GTK+ and other lower-level libraries; see
   - GTK+ docs at http://library.gnome.org/devel/gtk/unstable/
   - GDK docs at http://library.gnome.org/devel/gdk/unstable/
   - GLib docs at http://library.gnome.org/devel/glib/unstable/
   - GObject docs at http://library.gnome.org/devel/gobject/unstable/
   - Pango docs at http://library.gnome.org/devel/pango/unstable/
-- wxMac port uses the Carbon API: see Carbon docs at http://developer.apple.com/carbon
-- wxCocoa port uses the Cocoa API: see Cocoa docs at http://developer.apple.com/cocoa
+- wxOSX port uses the Cocoa API: see Cocoa docs at http://developer.apple.com/cocoa
 
 */

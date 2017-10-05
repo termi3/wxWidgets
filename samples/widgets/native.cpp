@@ -67,6 +67,20 @@ void BuildTestMenu(wxMenu *menu)
     #define BS_SPLITBUTTON 0x000c
 #endif // BS_SPLITBUTTON
 
+#ifndef BCN_DROPDOWN
+    #define BCN_DROPDOWN (-1248)
+#endif // defined(BCN_DROPDOWN)
+
+// This duplicates the standard NMBCDROPDOWN struct which is not defined in
+// some old (up to at least 4.9.1) MinGW-w64 headers even though, annoyingly,
+// BCN_DROPDOWN is, so we can't even use as an indicator of whether the struct
+// is defined or not.
+struct wxNMBCDROPDOWN
+{
+    NMHDR hdr;
+    RECT rcButton;
+};
+
 class NativeWindow : public wxNativeWindow
 {
 public:
@@ -95,10 +109,17 @@ public:
         (void)Create(parent, wxID_ANY, hwnd);
     }
 
+    virtual ~NativeWindow()
+    {
+        // If you don't call this, you need to call DestroyWindow() later.
+        //
+        // Also notice that a HWND can't continue to exist under MSW if its
+        // parent its destroyed, so you may also want to reparent it under some
+        // other window if the parent of this window is also getting destroyed.
+        Disown();
+    }
+
 protected:
-    // This code requires NMBCDROPDOWN to work, we don't really want to
-    // reproduce its definition here for very old compilers not having it.
-#ifdef BCN_DROPDOWN
     // Split buttons under MSW don't show the menu on their own, unlike their
     // equivalents under the other platforms, so do it manually here. This also
     // shows how to handle a native event in MSW (for the specific case of
@@ -110,7 +131,7 @@ protected:
         if ( hdr->code != BCN_DROPDOWN )
             return wxNativeWindow::MSWOnNotify(idCtrl, lParam, result);
 
-        const NMBCDROPDOWN* dd = reinterpret_cast<NMBCDROPDOWN*>(lParam);
+        const wxNMBCDROPDOWN* dd = reinterpret_cast<wxNMBCDROPDOWN*>(lParam);
 
         wxMenu menu;
         BuildTestMenu(&menu);
@@ -118,7 +139,6 @@ protected:
 
         return true;
     }
-#endif // defined(BCN_DROPDOWN)
 };
 
 #elif defined(__WXGTK__)
@@ -146,7 +166,20 @@ public:
         );
 #endif // GTK+ 3.6/earlier
 
+        g_object_ref_sink(widget);
+
         (void)Create(parent, wxID_ANY, widget);
+    }
+
+    virtual ~NativeWindow()
+    {
+        // If you don't call this, you need to call g_object_unref() on the
+        // widget yourself. The advantage of this is that you don't necessarily
+        // have to do it right now and could keep using the native widget and
+        // destroy it later. But if you don't need it any longer, as is the
+        // case here, it's simpler to just call Disown() to let it be destroyed
+        // immediately.
+        Disown();
     }
 
 private:
@@ -184,6 +217,15 @@ public:
         [v setAutoenablesItems:NO];
 
         (void)Create(parent, wxID_ANY, v);
+    }
+
+    virtual ~NativeWindow()
+    {
+        // If you don't call this, you need to call -release: on the button
+        // manually (see the comment in wxGTK version above) if using manual
+        // reference counting. If you build with ARC, you must *not* call
+        // Disown() to let the native view be destroyed automatically.
+        Disown();
     }
 };
 

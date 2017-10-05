@@ -44,6 +44,7 @@
 #include "wx/stockitem.h"
 #include "wx/msw/private/button.h"
 #include "wx/msw/private/dc.h"
+#include "wx/msw/uxtheme.h"
 #include "wx/private/window.h"
 
 #if wxUSE_MARKUP
@@ -53,8 +54,6 @@
 using namespace wxMSWImpl;
 
 #if wxUSE_UXTHEME
-    #include "wx/msw/uxtheme.h"
-
     // no need to include tmschema.h
     #ifndef BP_PUSHBUTTON
         #define BP_PUSHBUTTON 1
@@ -90,10 +89,6 @@ using namespace wxMSWImpl;
         };
     #endif
 #endif // wxUSE_UXTHEME
-
-#ifndef WM_THEMECHANGED
-    #define WM_THEMECHANGED     0x031A
-#endif
 
 #ifndef ODS_NOACCEL
     #define ODS_NOACCEL         0x0100
@@ -159,32 +154,32 @@ public:
         }
     }
 
-    virtual wxBitmap GetBitmap(wxAnyButton::State which) const
+    virtual wxBitmap GetBitmap(wxAnyButton::State which) const wxOVERRIDE
     {
         return m_bitmaps[which];
     }
 
-    virtual void SetBitmap(const wxBitmap& bitmap, wxAnyButton::State which)
+    virtual void SetBitmap(const wxBitmap& bitmap, wxAnyButton::State which) wxOVERRIDE
     {
         m_bitmaps[which] = bitmap;
     }
 
-    virtual wxSize GetBitmapMargins() const
+    virtual wxSize GetBitmapMargins() const wxOVERRIDE
     {
         return m_margin;
     }
 
-    virtual void SetBitmapMargins(wxCoord x, wxCoord y)
+    virtual void SetBitmapMargins(wxCoord x, wxCoord y) wxOVERRIDE
     {
         m_margin = wxSize(x, y);
     }
 
-    virtual wxDirection GetBitmapPosition() const
+    virtual wxDirection GetBitmapPosition() const wxOVERRIDE
     {
         return m_dir;
     }
 
-    virtual void SetBitmapPosition(wxDirection dir)
+    virtual void SetBitmapPosition(wxDirection dir) wxOVERRIDE
     {
         m_dir = dir;
     }
@@ -255,12 +250,12 @@ public:
         UpdateImageInfo();
     }
 
-    virtual wxBitmap GetBitmap(wxAnyButton::State which) const
+    virtual wxBitmap GetBitmap(wxAnyButton::State which) const wxOVERRIDE
     {
         return m_iml.GetBitmap(which);
     }
 
-    virtual void SetBitmap(const wxBitmap& bitmap, wxAnyButton::State which)
+    virtual void SetBitmap(const wxBitmap& bitmap, wxAnyButton::State which) wxOVERRIDE
     {
         m_iml.Replace(which, bitmap);
 
@@ -272,12 +267,12 @@ public:
         UpdateImageInfo();
     }
 
-    virtual wxSize GetBitmapMargins() const
+    virtual wxSize GetBitmapMargins() const wxOVERRIDE
     {
         return wxSize(m_data.margin.left, m_data.margin.top);
     }
 
-    virtual void SetBitmapMargins(wxCoord x, wxCoord y)
+    virtual void SetBitmapMargins(wxCoord x, wxCoord y) wxOVERRIDE
     {
         RECT& margin = m_data.margin;
         margin.left =
@@ -291,7 +286,7 @@ public:
         }
     }
 
-    virtual wxDirection GetBitmapPosition() const
+    virtual wxDirection GetBitmapPosition() const wxOVERRIDE
     {
         switch ( m_data.uAlign )
         {
@@ -313,7 +308,7 @@ public:
         }
     }
 
-    virtual void SetBitmapPosition(wxDirection dir)
+    virtual void SetBitmapPosition(wxDirection dir) wxOVERRIDE
     {
         UINT alignNew;
         switch ( dir )
@@ -415,7 +410,7 @@ wxSize wxMSWButton::GetFittingSize(wxWindow *win,
     {
         // We still need some margin or the text would be overwritten, just
         // make it as small as possible.
-        sizeBtn.x += (3*win->GetCharWidth());
+        sizeBtn.x += 2*win->GetCharWidth();
     }
     else
     {
@@ -444,30 +439,27 @@ wxSize wxMSWButton::IncreaseToStdSizeAndCache(wxControl *btn, const wxSize& size
 {
     wxSize sizeBtn(size);
 
-    // The 50x14 button size is documented in the "Recommended sizing and
-    // spacing" section of MSDN layout article.
-    //
-    // Note that we intentionally don't use GetDefaultSize() here, because
-    // it's inexact -- dialog units depend on this dialog's font.
-    const wxSize sizeDef = btn->ConvertDialogToPixels(wxSize(50, 14));
-
-    // All buttons should have at least the standard size, unless the user
-    // explicitly wants them to be as small as possible and used wxBU_EXACTFIT
-    // style to indicate this.
-    const bool incToStdSize = !btn->HasFlag(wxBU_EXACTFIT);
-    if ( incToStdSize )
+    // By default all buttons have at least the standard size.
+    if ( !btn->HasFlag(wxBU_EXACTFIT) )
     {
-        if ( sizeBtn.x < sizeDef.x )
-            sizeBtn.x = sizeDef.x;
+        // The 50x14 button size is documented in the "Recommended sizing and
+        // spacing" section of MSDN layout article.
+        //
+        // Note that we intentionally don't use GetDefaultSize() here, because
+        // it's inexact -- dialog units depend on this dialog's font.
+        const wxSize sizeDef = btn->ConvertDialogToPixels(wxSize(50, 14));
+
+        sizeBtn.IncTo(sizeDef);
     }
-
-    // Notice that we really want to make all buttons with text label equally
-    // high, otherwise they look ugly and the existing code using wxBU_EXACTFIT
-    // only uses it to control width and not height.
-    if ( incToStdSize || !btn->GetLabel().empty() )
+    else // wxBU_EXACTFIT case
     {
-        if ( sizeBtn.y < sizeDef.y )
-            sizeBtn.y = sizeDef.y;
+        // Such buttons are typically used alongside a text control or similar,
+        // so make them as high as it.
+        int yText;
+        wxGetCharSize(GetHwndOf(btn), NULL, &yText, btn->GetFont());
+        yText = EDIT_HEIGHT_FROM_CHAR_HEIGHT(yText);
+
+        sizeBtn.IncTo(wxSize(-1, yText));
     }
 
     btn->CacheBestSize(sizeBtn);
@@ -755,6 +747,19 @@ void wxAnyButton::DoSetBitmap(const wxBitmap& bitmap, State which)
     else
     {
         m_imageData->SetBitmap(bitmap, which);
+
+        // if the focus bitmap is specified but current one isn't, use
+        // the focus bitmap for hovering as well if this is consistent
+        // with the current Windows version look and feel.
+        //
+        // rationale: this is compatible with the old wxGTK behaviour
+        // and also makes it much easier to do "the right thing" for
+        // all platforms (some of them, such as Windows, have "hot"
+        // buttons while others don't)
+        if ( which == State_Focused && !m_imageData->GetBitmap(State_Current).IsOk() )
+        {
+            m_imageData->SetBitmap(bitmap, State_Current);
+        }
     }
 
     // it should be enough to only invalidate the best size when the normal
@@ -1135,7 +1140,7 @@ void DrawXPBackground(wxAnyButton *button, HDC hdc, RECT& rectBtn, UINT state)
     ::InflateRect(&rectBtn, -margins.cxLeftWidth, -margins.cyTopHeight);
     ::InflateRect(&rectBtn, -XP_BUTTON_EXTRA_MARGIN, -XP_BUTTON_EXTRA_MARGIN);
 
-    if ( button->UseBgCol() )
+    if ( button->UseBgCol() && iState != PBS_HOT )
     {
         COLORREF colBg = wxColourToRGB(button->GetBackgroundColour());
         AutoHBRUSH hbrushBackground(colBg);
@@ -1144,7 +1149,19 @@ void DrawXPBackground(wxAnyButton *button, HDC hdc, RECT& rectBtn, UINT state)
         RECT rectClient;
         ::CopyRect(&rectClient, &rectBtn);
         ::InflateRect(&rectClient, -1, -1);
-        FillRect(hdc, &rectClient, hbrushBackground);
+
+        if ( wxGetWinVersion() >= wxWinVersion_10 )
+        {
+            // buttons have flat appearance so we can fully color them
+            // even outside the "safe" rectangle
+            SelectInHDC brush(hdc, hbrushBackground);
+            COLORREF colTheme = GetPixel(hdc, rectClient.left, rectClient.top);
+            ExtFloodFill(hdc, rectClient.left, rectClient.top, colTheme, FLOODFILLSURFACE);
+        }
+        else
+        {
+            FillRect(hdc, &rectClient, hbrushBackground);
+        }
     }
 }
 #endif // wxUSE_UXTHEME
